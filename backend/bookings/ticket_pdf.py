@@ -6,6 +6,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from django.utils import timezone
 
 # ── Brand colors ──
 BRAND_ORANGE = HexColor("#E8622C")
@@ -190,25 +191,61 @@ def generate_ticket_pdf(booking):
         _draw_text_block(c, col1, row3, "TICKET NO.", ticket.ticket_number, BRAND_MUTED, BRAND_DARK)
         _draw_text_block(c, col2, row3, "BOOKING REFERENCE", booking.booking_reference, BRAND_MUTED, BRAND_DARK)
 
+        # ── payment info strip ──
+        pay_strip_y = card_y + 50
+        pay_strip_h = 36
+        _rounded_rect(c, card_x + left_pad, pay_strip_y, left_inner_w, pay_strip_h, 4, BRAND_ACCENT_LIGHT)
+
+        payment_id = getattr(booking, 'payment_id', None) or 'N/A'
+        booking_dt = booking.created_at
+        try:
+            booking_dt_str = booking_dt.strftime("%a, %b %d %Y  %I:%M %p")
+        except Exception:
+            booking_dt_str = str(booking_dt)
+        payment_status = booking.status.upper()
+
+        c.setFont("Helvetica-Bold", 7.5)
+        c.setFillColor(BRAND_MUTED)
+        c.drawString(card_x + left_pad + 8, pay_strip_y + 22, "PAYMENT ID")
+        c.setFont("Helvetica", 8)
+        c.setFillColor(BRAND_DARK)
+        pid_display = payment_id[:34] + ".." if len(payment_id) > 36 else payment_id
+        c.drawString(card_x + left_pad + 58, pay_strip_y + 22, pid_display)
+
+        c.setFont("Helvetica-Bold", 7.5)
+        c.setFillColor(BRAND_MUTED)
+        c.drawString(card_x + left_pad + 8, pay_strip_y + 8, "BOOKED ON")
+        c.setFont("Helvetica", 8)
+        c.setFillColor(BRAND_DARK)
+        c.drawString(card_x + left_pad + 58, pay_strip_y + 8, booking_dt_str)
+
+        c.setFont("Helvetica-Bold", 7.5)
+        c.setFillColor(BRAND_MUTED)
+        c.drawString(card_x + left_pad + 250, pay_strip_y + 22, "STATUS")
+        c.setFont("Helvetica-Bold", 8)
+        status_color = BRAND_GREEN if payment_status == 'CONFIRMED' else BRAND_ORANGE_DARK
+        c.setFillColor(status_color)
+        c.drawString(card_x + left_pad + 290, pay_strip_y + 22, payment_status)
+
         # ── attendee & price strip ──
         strip_y = card_y + 32
-        strip_h = 18
+        strip_h = 14
         _rounded_rect(c, card_x + left_pad, strip_y, left_inner_w, strip_h, 4, BRAND_ACCENT_LIGHT)
 
         attendee = user.get_full_name() or user.username
         c.setFont("Helvetica-Bold", 7.5)
         c.setFillColor(BRAND_MUTED)
-        c.drawString(card_x + left_pad + 8, strip_y + 6, "ATTENDEE")
+        c.drawString(card_x + left_pad + 8, strip_y + 3, "ATTENDEE")
         c.setFont("Helvetica", 9)
         c.setFillColor(BRAND_DARK)
-        c.drawString(card_x + left_pad + 58, strip_y + 6, attendee[:36])
+        c.drawString(card_x + left_pad + 58, strip_y + 3, attendee[:36])
 
         c.setFont("Helvetica-Bold", 7.5)
         c.setFillColor(BRAND_MUTED)
-        c.drawString(card_x + left_pad + 250, strip_y + 6, "AMOUNT")
+        c.drawString(card_x + left_pad + 250, strip_y + 3, "AMOUNT")
         c.setFont("Helvetica-Bold", 10)
         c.setFillColor(BRAND_ORANGE_DARK)
-        c.drawString(card_x + left_pad + 300, strip_y + 5, f"Rs. {booking.total_price}")
+        c.drawString(card_x + left_pad + 300, strip_y + 2, f"Rs. {booking.total_price}")
 
         # ── footer terms ──
         c.setFont("Helvetica", 6.5)
