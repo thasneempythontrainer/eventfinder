@@ -3,7 +3,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, Ticket, Star, ListPlus, PlusCircle, CheckCircle,
-  CalendarDays, LogOut, Home, Search, ClipboardList, KeyRound, PenLine, Menu
+  CalendarDays, LogOut, Home, Search, ClipboardList, KeyRound, PenLine, Menu,
+  User, Users
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import './Navbar.css';
@@ -86,6 +87,14 @@ const Navbar = () => {
                     <LayoutDashboard size={16} /> Dashboard
                   </Link>
 
+                  <Link 
+                    to="/profile"
+                    className="dropdown-item"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    <User size={16} /> Profile
+                  </Link>
+
                   {user?.role === 'USER' && (
                     <>
                       <Link 
@@ -131,7 +140,14 @@ const Navbar = () => {
                         className="dropdown-item"
                         onClick={() => setUserMenuOpen(false)}
                       >
-                        <CheckCircle size={16} /> Approvals
+                        <CheckCircle size={16} /> Organizer Approvals
+                      </Link>
+                      <Link 
+                        to="/admin/users"
+                        className="dropdown-item"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <Users size={16} /> Users & Organizers
                       </Link>
                       <Link 
                         to="/admin/events"
@@ -203,6 +219,13 @@ const Navbar = () => {
                 >
                   <LayoutDashboard size={16} /> Dashboard
                 </Link>
+                <Link 
+                  to="/profile"
+                  className="mobile-nav-link"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <User size={16} /> Profile
+                </Link>
                 {user?.role === 'USER' && (
                   <>
                     <Link 
@@ -236,6 +259,24 @@ const Navbar = () => {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <PlusCircle size={16} /> Create Event
+                    </Link>
+                  </>
+                )}
+                {user?.role === 'ADMIN' && (
+                  <>
+                    <Link 
+                      to="/admin/approvals"
+                      className="mobile-nav-link"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <CheckCircle size={16} /> Approvals
+                    </Link>
+                    <Link 
+                      to="/admin/users"
+                      className="mobile-nav-link"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Users size={16} /> Users & Organizers
                     </Link>
                   </>
                 )}

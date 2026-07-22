@@ -1,17 +1,26 @@
 from django.db.models import Q
 from django.http import HttpResponse
+from django.conf import settings
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 import uuid
+import razorpay
+import hashlib
+import hmac
+from decimal import Decimal
 from datetime import datetime
 
 from .models import Booking, Ticket
 from .serializers import BookingSerializer, BookingCreateSerializer, BookingUpdateSerializer
 from events.models import Event
 from .ticket_pdf import generate_ticket_pdf
+
+razorpay_client = razorpay.Client(
+    auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
+)
 
 
 class BookingViewSet(viewsets.ModelViewSet):
@@ -43,13 +52,12 @@ class BookingViewSet(viewsets.ModelViewSet):
         return BookingSerializer
 
     def create(self, request, *args, **kwargs):
-        """Create a new booking"""
+        """Create a new booking without payment (for free events)"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         event = get_object_or_404(Event, id=request.data.get('event'))
         
-        # Block booking for completed or cancelled events
         if event.status in ("COMPLETED", "CANCELLED"):
             return Response(
                 {"detail": f"This event has {event.status.lower()} and tickets are no longer available."},
@@ -58,27 +66,25 @@ class BookingViewSet(viewsets.ModelViewSet):
         
         num_tickets = serializer.validated_data.get('number_of_tickets')
         
-        # Check available seats
         if num_tickets > event.available_seats:
             return Response(
                 {"detail": f"Only {event.available_seats} seats available"},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Generate booking reference
+        total_price = Decimal(str(event.ticket_price)) * num_tickets
+        
         booking_reference = f"BK{uuid.uuid4().hex[:8].upper()}"
         
-        # Create booking
         booking = Booking.objects.create(
             user=request.user,
             event=event,
             number_of_tickets=num_tickets,
-            total_price=serializer.validated_data.get('total_price'),
+            total_price=total_price,
             booking_reference=booking_reference,
             status="CONFIRMED"
         )
         
-        # Generate tickets with QR codes
         for i in range(num_tickets):
             ticket_number = f"{booking_reference}T{i+1}"
             ticket = Ticket.objects.create(
@@ -87,15 +93,158 @@ class BookingViewSet(viewsets.ModelViewSet):
             )
             ticket.generate_qr_code()
         
-        # Update available seats
         event.available_seats -= num_tickets
         event.save()
         
-        # Trigger notification (will implement with Celery)
-        # send_booking_confirmation.delay(booking.id)
-        
         serializer = BookingSerializer(booking)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['POST'])
+    def create_order(self, request):
+        """Create a Razorpay order for paid booking"""
+        event_id = request.data.get('event')
+        num_tickets = request.data.get('number_of_tickets')
+
+        if not event_id or not num_tickets:
+            return Response(
+                {"detail": "event and number_of_tickets are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            num_tickets = int(num_tickets)
+        except (ValueError, TypeError):
+            return Response(
+                {"detail": "number_of_tickets must be an integer"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        event = get_object_or_404(Event, id=event_id)
+
+        if event.status in ("COMPLETED", "CANCELLED"):
+            return Response(
+                {"detail": f"This event has {event.status.lower()} and tickets are no longer available."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if num_tickets < 1 or num_tickets > event.available_seats:
+            return Response(
+                {"detail": f"Only {event.available_seats} seats available"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        total_price = Decimal(str(event.ticket_price)) * num_tickets
+        amount_in_paise = int(total_price * 100)
+
+        if amount_in_paise == 0:
+            return Response(
+                {"detail": "This is a free event. Use direct booking."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        booking_reference = f"BK{uuid.uuid4().hex[:8].upper()}"
+
+        order = razorpay_client.order.create({
+            "amount": amount_in_paise,
+            "currency": "INR",
+            "receipt": booking_reference,
+            "notes": {
+                "event_id": str(event.id),
+                "event_title": event.title,
+                "user_id": str(request.user.id),
+                "num_tickets": str(num_tickets),
+            }
+        })
+
+        booking = Booking.objects.create(
+            user=request.user,
+            event=event,
+            number_of_tickets=num_tickets,
+            total_price=total_price,
+            booking_reference=booking_reference,
+            payment_id=order["id"],
+            status="PENDING"
+        )
+
+        return Response({
+            "order_id": order["id"],
+            "amount": amount_in_paise,
+            "currency": "INR",
+            "booking_reference": booking_reference,
+            "key_id": settings.RAZORPAY_KEY_ID,
+            "event_title": event.title,
+            "user_name": request.user.first_name or request.user.username,
+            "user_email": request.user.email,
+            "user_phone": request.user.phone_number or "",
+        })
+
+    @action(detail=False, methods=['POST'])
+    def verify_payment(self, request):
+        """Verify Razorpay payment and confirm booking"""
+        razorpay_order_id = request.data.get('razorpay_order_id')
+        razorpay_payment_id = request.data.get('razorpay_payment_id')
+        razorpay_signature = request.data.get('razorpay_signature')
+        booking_reference = request.data.get('booking_reference')
+
+        if not all([razorpay_order_id, razorpay_payment_id, razorpay_signature, booking_reference]):
+            return Response(
+                {"detail": "Missing payment verification data"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            booking = Booking.objects.get(
+                booking_reference=booking_reference,
+                user=request.user
+            )
+        except Booking.DoesNotExist:
+            return Response(
+                {"detail": "Booking not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if booking.status == "CONFIRMED":
+            return Response(
+                BookingSerializer(booking).data,
+                status=status.HTTP_200_OK
+            )
+
+        if booking.status != "PENDING":
+            return Response(
+                {"detail": "Booking is not in pending state"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        generated_signature = hmac.new(
+            settings.RAZORPAY_KEY_SECRET.encode(),
+            f"{razorpay_order_id}|{razorpay_payment_id}".encode(),
+            hashlib.sha256
+        ).hexdigest()
+
+        if generated_signature != razorpay_signature:
+            booking.status = "CANCELLED"
+            booking.save()
+            return Response(
+                {"detail": "Payment verification failed. Invalid signature."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        booking.payment_id = razorpay_payment_id
+        booking.status = "CONFIRMED"
+        booking.save()
+
+        for i in range(booking.number_of_tickets):
+            ticket_number = f"{booking.booking_reference}T{i+1}"
+            ticket = Ticket.objects.create(
+                booking=booking,
+                ticket_number=ticket_number
+            )
+            ticket.generate_qr_code()
+
+        booking.event.available_seats -= booking.number_of_tickets
+        booking.event.save()
+
+        return Response(BookingSerializer(booking).data)
 
     @action(detail=False, methods=['GET'])
     def my_bookings(self, request):

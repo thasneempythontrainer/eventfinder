@@ -64,6 +64,23 @@ export const authAPI = {
   rejectOrganizer: (userId) => api.post(`/users/${userId}/reject_organizer/`),
 };
 
+// Profile Edit Request APIs
+export const profileEditAPI = {
+  create: (data) => api.post('/profile-edit-requests/', data),
+  myRequests: () => api.get('/profile-edit-requests/'),
+  allRequests: (params = {}) => api.get('/profile-edit-requests/', { params }),
+  approve: (id) => api.post(`/profile-edit-requests/${id}/approve/`),
+  reject: (id, adminNotes = '') =>
+    api.post(`/profile-edit-requests/${id}/reject/`, { admin_notes: adminNotes }),
+};
+
+// Admin User Management APIs
+export const adminUserAPI = {
+  list: (params = {}) => api.get('/users/all_users/', { params }),
+  detail: (id) => api.get(`/users/${id}/user_detail/`),
+  toggleActive: (id) => api.post(`/users/${id}/toggle_active/`),
+};
+
 // Event APIs
 export const eventAPI = {
   list: (params = {}) => api.get('/events/', { params }),
@@ -99,6 +116,8 @@ export const bookingAPI = {
   downloadTickets: (id) => api.get(`/bookings/${id}/download_tickets/`, { responseType: 'blob' }),
   myBookings: () => api.get('/bookings/my_bookings/'),
   statistics: () => api.get('/bookings/statistics/'),
+  createOrder: (data) => api.post('/bookings/create_order/', data),
+  verifyPayment: (data) => api.post('/bookings/verify_payment/', data),
 };
 
 // Chat APIs

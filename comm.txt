@@ -3,3 +3,16 @@ sudo systemctl start redis-server
 
 redis-cli ping
 
+Before testing, you need to:
+1. Install the Python package (activate your venv first):
+pip install razorpay
+2. Get Razorpay test keys from dashboard.razorpay.com (https://dashboard.razorpay.com):
+- Sign up / login
+- Go to Settings → API Keys → Generate Test Key
+- Set them as environment variables or edit settings.py:
+RAZORPAY_KEY_ID = "rzp_test_xxxxxxxx"
+RAZORPAY_KEY_SECRET = "xxxxxxxx"
+3. Test with Razorpay test cards:
+- Card: 4111 1111 1111 1111
+- Expiry: any future date
+- CVV: any 3 digits

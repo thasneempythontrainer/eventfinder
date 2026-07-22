@@ -7,7 +7,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 # Import ViewSets
-from accounts.views import UserViewSet
+from accounts.views import UserViewSet, ProfileEditRequestViewSet
 from events.views import EventViewSet, CategoryViewSet, EventImageViewSet
 from bookings.views import BookingViewSet
 from chat.views import ChatRoomViewSet
@@ -26,6 +26,7 @@ router.register(r'bookings', BookingViewSet, basename='booking')
 router.register(r'chat-rooms', ChatRoomViewSet, basename='chat-room')
 router.register(r'experiences', EventExperienceViewSet, basename='experience')
 router.register(r'notifications', NotificationViewSet, basename='notification')
+router.register(r'profile-edit-requests', ProfileEditRequestViewSet, basename='profile-edit-request')
 
 urlpatterns = [
     # Admin

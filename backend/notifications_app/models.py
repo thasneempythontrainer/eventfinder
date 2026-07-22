@@ -21,6 +21,9 @@ class Notification(models.Model):
         ("CHAT_MESSAGE", "Chat Message"),
         ("PAYMENT_SUCCESS", "Payment Success"),
         ("PAYMENT_FAILED", "Payment Failed"),
+        ("PROFILE_EDIT_REQUEST", "Profile Edit Request"),
+        ("PROFILE_EDIT_APPROVED", "Profile Edit Approved"),
+        ("PROFILE_EDIT_REJECTED", "Profile Edit Rejected"),
     )
     
     user = models.ForeignKey(

@@ -1,0 +1,329 @@
+/* ========== PAYMENT RECEIPT / FAILED ========== */
+
+.payment-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f1ea 0%, #e8e4dd 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.payment-loading {
+  text-align: center;
+  color: #999;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e0e0e0;
+  border-top-color: #e8622c;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+
+.receipt-container {
+  max-width: 560px;
+  width: 100%;
+  text-align: center;
+}
+
+/* Success Icon Animation */
+.receipt-success-icon {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 24px;
+}
+
+.success-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.failed-circle {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+}
+
+.success-ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #2ecc71;
+  animation: ripple 1.5s ease-out infinite;
+  z-index: 1;
+}
+
+.failed-ripple {
+  border-color: #e74c3c;
+}
+
+.success-ripple.delay {
+  animation-delay: 0.5s;
+}
+
+@keyframes ripple {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+.receipt-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 8px 0;
+}
+
+.failed-title {
+  color: #c0392b;
+}
+
+.receipt-subtitle {
+  font-size: 15px;
+  color: #888;
+  margin: 0 0 32px 0;
+}
+
+/* Receipt Card */
+.receipt-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  text-align: left;
+  animation: fadeInUp 0.5s ease 0.2s both;
+}
+
+.failed-card {
+  animation-delay: 0.2s;
+}
+
+.receipt-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 28px;
+}
+
+.receipt-brand-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+}
+
+.receipt-status-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.receipt-divider {
+  height: 1px;
+  background: #f0f0f0;
+}
+
+.receipt-section {
+  padding: 20px 28px;
+}
+
+.receipt-section h3 {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #999;
+  margin: 0 0 16px 0;
+  font-weight: 600;
+}
+
+.receipt-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.receipt-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.receipt-field > svg {
+  color: #e8622c;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.receipt-field > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.receipt-label {
+  font-size: 12px;
+  color: #999;
+  font-weight: 500;
+}
+
+.receipt-value {
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.receipt-mono {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 13px;
+}
+
+.receipt-total-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 28px;
+  background: #f8f9fa;
+  border-top: 1px solid #f0f0f0;
+}
+
+.receipt-total-bar span:first-child {
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+}
+
+.receipt-total-amount {
+  font-size: 24px;
+  font-weight: 700;
+  color: #e8622c;
+}
+
+/* Actions */
+.receipt-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  animation: fadeInUp 0.5s ease 0.4s both;
+}
+
+.receipt-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.receipt-note {
+  margin-top: 20px;
+  font-size: 13px;
+  color: #aaa;
+  animation: fadeInUp 0.5s ease 0.5s both;
+}
+
+/* ========== FAILED PAYMENT ========== */
+
+.failed-error-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 20px 28px;
+  padding: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+}
+
+.failed-error-box svg {
+  color: #dc2626;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.failed-error-box p {
+  margin: 0;
+  font-size: 14px;
+  color: #991b1b;
+  line-height: 1.5;
+}
+
+.failed-info {
+  padding: 0 28px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.failed-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.failed-info-row svg {
+  color: #e8622c;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.failed-info-row strong {
+  display: block;
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.failed-info-row p {
+  margin: 0;
+  font-size: 13px;
+  color: #777;
+  line-height: 1.5;
+}
+
+.failed-tips {
+  padding: 20px 28px 24px;
+}
+
+.failed-tips strong {
+  display: block;
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.failed-tips ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #888;
+  line-height: 1.8;
+}
+
+@media (max-width: 600px) {
+  .receipt-actions {
+    flex-direction: column;
+  }
+
+  .receipt-title {
+    font-size: 22px;
+  }
+
+  .receipt-total-amount {
+    font-size: 20px;
+  }
+}

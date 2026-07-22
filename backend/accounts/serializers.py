@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 
-from .models import User, OrganizerProfile
+from .models import User, OrganizerProfile, ProfileEditRequest
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -191,3 +191,111 @@ class OrganizerApprovalSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrganizerProfile
         fields = ['approval_status']
+
+
+class ProfileEditRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProfileEditRequest
+        fields = [
+            'id', 'proposed_data', 'status', 'admin_notes',
+            'reviewed_by', 'created_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'id', 'status', 'admin_notes', 'reviewed_by',
+            'created_at', 'updated_at'
+        ]
+
+    def validate_proposed_data(self, value):
+        allowed_fields = {
+            'first_name', 'last_name', 'username',
+            'email', 'phone_number', 'profile_picture',
+            'organization_name', 'address'
+        }
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Proposed data must be a JSON object.")
+        for key in value:
+            if key not in allowed_fields:
+                raise serializers.ValidationError(
+                    f"Field '{key}' cannot be edited. "
+                    f"Allowed fields: {', '.join(sorted(allowed_fields))}"
+                )
+        if not value:
+            raise serializers.ValidationError("At least one field must be provided.")
+        return value
+
+
+class ProfileEditRequestListSerializer(serializers.ModelSerializer):
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    user_role = serializers.CharField(source='user.role', read_only=True)
+    reviewed_by_username = serializers.CharField(
+        source='reviewed_by.username', read_only=True, default=None
+    )
+
+    class Meta:
+        model = ProfileEditRequest
+        fields = [
+            'id', 'user', 'user_username', 'user_email', 'user_role',
+            'proposed_data', 'status', 'admin_notes',
+            'reviewed_by_username', 'created_at', 'updated_at'
+        ]
+        read_only_fields = fields
+
+
+class AdminUserDetailSerializer(serializers.ModelSerializer):
+    organizer_profile = OrganizerProfileSerializer(read_only=True)
+    total_bookings = serializers.SerializerMethodField()
+    total_spent = serializers.SerializerMethodField()
+    total_events = serializers.SerializerMethodField()
+    total_revenue = serializers.SerializerMethodField()
+    pending_edit_requests = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'first_name', 'last_name', 'email',
+            'phone_number', 'role', 'profile_picture', 'is_verified',
+            'is_active', 'organizer_profile',
+            'total_bookings', 'total_spent',
+            'total_events', 'total_revenue',
+            'pending_edit_requests',
+            'created_at', 'updated_at'
+        ]
+
+    def get_total_bookings(self, obj):
+        if obj.role != 'USER':
+            return None
+        return obj.bookings.count() if hasattr(obj, 'bookings') else 0
+
+    def get_total_spent(self, obj):
+        if obj.role != 'USER':
+            return None
+        if not hasattr(obj, 'bookings'):
+            return 0
+        from django.db.models import Sum
+        result = obj.bookings.filter(status='CONFIRMED').aggregate(
+            total=Sum('total_price')
+        )
+        return float(result['total'] or 0)
+
+    def get_total_events(self, obj):
+        if obj.role != 'ORGANIZER':
+            return None
+        if not hasattr(obj, 'organized_events'):
+            return 0
+        return obj.organized_events.count()
+
+    def get_total_revenue(self, obj):
+        if obj.role != 'ORGANIZER':
+            return None
+        if not hasattr(obj, 'organized_events'):
+            return 0
+        from django.db.models import Sum
+        result = obj.organized_events.filter(status__in=['COMPLETED', 'ONGOING']).aggregate(
+            total=Sum('ticket_price')
+        )
+        return float(result['total'] or 0)
+
+    def get_pending_edit_requests(self, obj):
+        pending = obj.profile_edit_requests.filter(status='PENDING')
+        return ProfileEditRequestListSerializer(pending, many=True).data

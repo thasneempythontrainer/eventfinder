@@ -12,6 +12,11 @@ import HomePage from './pages/events/HomePage';
 import EventList from './pages/events/EventList';
 import EventDetail from './pages/events/EventDetail';
 
+// Pages - Common
+import Profile from './pages/common/Profile';
+import PaymentReceipt from './pages/common/PaymentReceipt';
+import PaymentFailed from './pages/common/PaymentFailed';
+
 // User Pages
 import UserDashboard from './pages/user/Dashboard';
 import UserBookings from './pages/user/Bookings';
@@ -27,7 +32,10 @@ import EventAnalytics from './pages/organizer/EventAnalytics';
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
 import ManageEvents from './pages/admin/ManageEvents';
+import OrganizerApprovals from './pages/admin/Approvals';
 import PendingApproval from './pages/admin/PendingApproval';
+import UsersList from './pages/admin/UsersList';
+import UserDetail from './pages/admin/UserDetail';
 
 // Components
 import Navbar from './components/common/Navbar';
@@ -107,8 +115,17 @@ const AppContent = () => {
           {/* Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/approvals" element={<ManageEvents />} />
+            <Route path="/admin/approvals" element={<OrganizerApprovals />} />
             <Route path="/admin/events" element={<ManageEvents />} />
+            <Route path="/admin/users" element={<UsersList />} />
+            <Route path="/admin/users/:id" element={<UserDetail />} />
+          </Route>
+
+          {/* Profile - accessible by all authenticated roles */}
+          <Route element={<ProtectedRoute allowedRoles={['USER', 'ORGANIZER', 'ADMIN']} />}>
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/payment/success" element={<PaymentReceipt />} />
+            <Route path="/payment/failed" element={<PaymentFailed />} />
           </Route>
 
           {/* 404 */}

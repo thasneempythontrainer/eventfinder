@@ -57,6 +57,20 @@ const EventDetail = () => {
     }
   };
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]')) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handleBooking = async () => {
     if (!isAuthenticated) {
       navigate('/login');
@@ -68,19 +82,120 @@ const EventDetail = () => {
       return;
     }
 
+    const totalAmount = event.ticket_price * tickets;
+
+    if (totalAmount === 0) {
+      setBookingLoading(true);
+      try {
+        const response = await bookingAPI.create({
+          event: event.id,
+          number_of_tickets: tickets,
+          total_price: 0,
+        });
+        navigate('/payment/success', {
+          state: {
+            booking_reference: response.data.booking_reference,
+            razorpay_payment_id: 'FREE_EVENT',
+            razorpay_order_id: 'FREE_EVENT',
+          },
+        });
+      } catch (err) {
+        setError(err.response?.data?.detail || 'Booking failed');
+      } finally {
+        setBookingLoading(false);
+      }
+      return;
+    }
+
     setBookingLoading(true);
+    setError('');
+
     try {
-      const response = await bookingAPI.create({
+      const orderResponse = await bookingAPI.createOrder({
         event: event.id,
         number_of_tickets: tickets,
-        total_price: event.ticket_price * tickets,
       });
 
-      alert(`Booking successful! Reference: ${response.data.booking_reference}`);
-      navigate('/user/bookings');
+      const orderData = orderResponse.data;
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setError('Failed to load payment gateway. Please try again.');
+        setBookingLoading(false);
+        return;
+      }
+
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'EventFinder',
+        description: `Booking for ${orderData.event_title}`,
+        order_id: orderData.order_id,
+        prefill: {
+          name: orderData.user_name,
+          email: orderData.user_email,
+          contact: orderData.user_phone || '',
+        },
+        theme: {
+          color: '#e8622c',
+        },
+        handler: async function (response) {
+          try {
+            const verifyResponse = await bookingAPI.verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              booking_reference: orderData.booking_reference,
+            });
+
+            navigate('/payment/success', {
+              state: {
+                booking_reference: verifyResponse.data.booking_reference,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+              },
+            });
+          } catch (err) {
+            navigate('/payment/failed', {
+              state: {
+                error_message: err.response?.data?.detail || 'Payment verification failed. Please contact support.',
+                event_id: event.id,
+                event_title: event.title,
+              },
+            });
+          } finally {
+            setBookingLoading(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setBookingLoading(false);
+            navigate('/payment/failed', {
+              state: {
+                error_message: 'Payment was cancelled by you.',
+                event_id: event.id,
+                event_title: event.title,
+              },
+            });
+          },
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.on('payment.failed', function (response) {
+        navigate('/payment/failed', {
+          state: {
+            error_message: response.error?.description || 'Payment failed. Please try again.',
+            event_id: event.id,
+            event_title: event.title,
+          },
+        });
+        setBookingLoading(false);
+      });
+      razorpay.open();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Booking failed');
-    } finally {
+      setError(err.response?.data?.detail || 'Failed to create payment order');
       setBookingLoading(false);
     }
   };
@@ -583,7 +698,7 @@ const EventDetail = () => {
                   onClick={handleBooking}
                   disabled={bookingLoading}
                 >
-                  {bookingLoading ? 'Processing...' : isAuthenticated ? 'Book Now' : 'Login to Book'}
+                  {bookingLoading ? 'Processing...' : isAuthenticated ? (event.ticket_price > 0 ? 'Pay Now' : 'Book Now') : 'Login to Book'}
                 </button>
               </>
             ) : (
