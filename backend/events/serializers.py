@@ -1,0 +1,170 @@
+from rest_framework import serializers
+
+from .models import Category, Event, EventImage
+
+
+class CategorySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'description', 'icon', 'created_at']
+
+
+class EventImageSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = EventImage
+        fields = ['id', 'image', 'uploaded_at']
+        read_only_fields = ['id', 'uploaded_at']
+
+
+class EventSerializer(serializers.ModelSerializer):
+
+    category_name = serializers.CharField(
+        source="category.name",
+        read_only=True,
+    )
+
+    organizer_name = serializers.CharField(
+        source="organizer.username",
+        read_only=True,
+    )
+
+    organizer_email = serializers.EmailField(
+        source="organizer.email",
+        read_only=True,
+    )
+
+    organizer_first_name = serializers.CharField(
+        source="organizer.first_name",
+        read_only=True,
+    )
+
+    organizer_last_name = serializers.CharField(
+        source="organizer.last_name",
+        read_only=True,
+    )
+
+    gallery = EventImageSerializer(
+        many=True,
+        read_only=True,
+    )
+
+    images = EventImageSerializer(
+        source="gallery",
+        many=True,
+        read_only=True,
+    )
+
+    booking_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Event
+
+        fields = [
+            'id', 'organizer', 'organizer_name', 'organizer_email',
+            'organizer_first_name', 'organizer_last_name',
+            'category', 'category_name', 'title', 'description',
+            'venue', 'city',
+            'latitude', 'longitude', 'start_date', 'end_date', 'start_time',
+            'end_time', 'banner', 'ticket_price', 'total_seats', 'available_seats',
+            'status', 'gallery', 'images', 'booking_count', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'available_seats']
+
+    def get_booking_count(self, obj):
+        return obj.bookings.filter(status='CONFIRMED').count()
+
+
+class EventCreateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Event
+
+        fields = [
+            'category', 'title', 'description', 'venue', 'city',
+            'latitude', 'longitude', 'start_date', 'end_date', 'start_time',
+            'end_time', 'banner', 'ticket_price', 'total_seats'
+        ]
+
+    def create(self, validated_data):
+        validated_data['organizer'] = self.context['request'].user
+        validated_data['available_seats'] = validated_data['total_seats']
+        validated_data['status'] = 'PENDING'
+        return super().create(validated_data)
+
+
+class EventUpdateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Event
+
+        fields = [
+            'title', 'description', 'category', 'venue', 'city', 'latitude', 'longitude',
+            'start_date', 'end_date', 'start_time', 'end_time', 'banner',
+            'ticket_price', 'total_seats', 'status'
+        ]
+
+
+class EventDetailSerializer(serializers.ModelSerializer):
+    """Detailed event view with full information"""
+
+    category_name = serializers.CharField(
+        source="category.name",
+        read_only=True,
+    )
+
+    organizer_name = serializers.CharField(
+        source="organizer.username",
+        read_only=True,
+    )
+
+    organizer_first_name = serializers.CharField(
+        source="organizer.first_name",
+        read_only=True,
+    )
+
+    organizer_last_name = serializers.CharField(
+        source="organizer.last_name",
+        read_only=True,
+    )
+
+    organizer_email = serializers.EmailField(
+        source="organizer.email",
+        read_only=True,
+    )
+
+    organizer_profile_picture = serializers.SerializerMethodField()
+
+    gallery = EventImageSerializer(many=True, read_only=True)
+    images = EventImageSerializer(source="gallery", many=True, read_only=True)
+    booking_count = serializers.SerializerMethodField()
+    average_rating = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Event
+        fields = [
+            'id', 'organizer', 'organizer_name', 'organizer_first_name',
+            'organizer_last_name', 'organizer_email',
+            'organizer_profile_picture',
+            'category', 'category_name', 'title', 'description', 'venue',
+            'city', 'latitude', 'longitude', 'start_date', 'end_date',
+            'start_time', 'end_time', 'banner', 'ticket_price', 'total_seats',
+            'available_seats', 'status', 'gallery', 'images', 'booking_count',
+            'average_rating', 'created_at', 'updated_at'
+        ]
+
+    def get_organizer_profile_picture(self, obj):
+        if obj.organizer.profile_picture:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.organizer.profile_picture.url)
+        return None
+
+    def get_booking_count(self, obj):
+        return obj.bookings.filter(status='CONFIRMED').count()
+
+    def get_average_rating(self, obj):
+        from django.db.models import Avg
+        avg_rating = obj.experiences.aggregate(Avg('rating'))['rating__avg']
+        return round(avg_rating, 2) if avg_rating else 0
