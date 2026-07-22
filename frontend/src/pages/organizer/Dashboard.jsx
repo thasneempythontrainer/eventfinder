@@ -19,14 +19,30 @@ const OrganizerDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [dashStats, eventsRes, bookingsRes] = await Promise.all([
+      const [dashStatsResult, eventsResult, bookingsResult] = await Promise.allSettled([
         dashboardAPI.organizerDashboard(),
         dashboardAPI.organizerMyEvents(),
         dashboardAPI.organizerRecentBookings(),
       ]);
-      setStats(dashStats.data);
-      setEvents(eventsRes.data || []);
-      setRecentBookings(bookingsRes.data || []);
+
+      if (dashStatsResult.status === 'fulfilled') {
+        setStats(dashStatsResult.value.data);
+      } else {
+        setError('Failed to load dashboard stats');
+        console.error('Stats error:', dashStatsResult.reason);
+      }
+
+      if (eventsResult.status === 'fulfilled') {
+        setEvents(eventsResult.value.data || []);
+      } else {
+        console.error('Events error:', eventsResult.reason);
+      }
+
+      if (bookingsResult.status === 'fulfilled') {
+        setRecentBookings(bookingsResult.value.data || []);
+      } else {
+        console.error('Bookings error:', bookingsResult.reason);
+      }
     } catch (err) {
       setError('Failed to load dashboard data');
       console.error(err);

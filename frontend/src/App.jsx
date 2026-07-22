@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './App.css';
 
@@ -26,20 +26,27 @@ import EventAnalytics from './pages/organizer/EventAnalytics';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
-import OrganizerApprovals from './pages/admin/Approvals';
 import ManageEvents from './pages/admin/ManageEvents';
 import PendingApproval from './pages/admin/PendingApproval';
 
 // Components
 import Navbar from './components/common/Navbar';
 
-const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user, isAuthenticated } = useAuth();
-  
+const ProtectedRoute = ({ allowedRoles }) => {
+  const { user, loading, isAuthenticated } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
   }
-  
+
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
     return <Navigate to="/" />;
   }
@@ -51,8 +58,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
       return <PendingApproval />;
     }
   }
-  
-  return children;
+
+  return <Outlet />;
 };
 
 const App = () => {
@@ -82,48 +89,27 @@ const AppContent = () => {
           <Route path="/register-organizer" element={isAuthenticated ? <Navigate to="/" /> : <RegisterOrganizer />} />
 
           {/* User Routes */}
-          <Route
-            path="/user/*"
-            element={
-              <ProtectedRoute allowedRoles={['USER']}>
-                <Routes>
-                  <Route path="dashboard" element={<UserDashboard />} />
-                  <Route path="bookings" element={<UserBookings />} />
-                  <Route path="experiences" element={<UserExperiences />} />
-                </Routes>
-              </ProtectedRoute>
-            }
-          />
+          <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
+            <Route path="/user/dashboard" element={<UserDashboard />} />
+            <Route path="/user/bookings" element={<UserBookings />} />
+            <Route path="/user/experiences" element={<UserExperiences />} />
+          </Route>
 
           {/* Organizer Routes */}
-          <Route
-            path="/organizer/*"
-            element={
-              <ProtectedRoute allowedRoles={['ORGANIZER']}>
-                <Routes>
-                  <Route path="dashboard" element={<OrganizerDashboard />} />
-                  <Route path="events" element={<OrganizerEvents />} />
-                  <Route path="create-event" element={<CreateEvent />} />
-                  <Route path="events/:id/edit" element={<EditEvent />} />
-                  <Route path="events/:id/analytics" element={<EventAnalytics />} />
-                </Routes>
-              </ProtectedRoute>
-            }
-          />
+          <Route element={<ProtectedRoute allowedRoles={['ORGANIZER']} />}>
+            <Route path="/organizer/dashboard" element={<OrganizerDashboard />} />
+            <Route path="/organizer/events" element={<OrganizerEvents />} />
+            <Route path="/organizer/create-event" element={<CreateEvent />} />
+            <Route path="/organizer/events/:id/edit" element={<EditEvent />} />
+            <Route path="/organizer/events/:id/analytics" element={<EventAnalytics />} />
+          </Route>
 
           {/* Admin Routes */}
-          <Route
-            path="/admin/*"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <Routes>
-                  <Route path="dashboard" element={<AdminDashboard />} />
-                  <Route path="approvals" element={<ManageEvents />} />
-                  <Route path="events" element={<ManageEvents />} />
-                </Routes>
-              </ProtectedRoute>
-            }
-          />
+          <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/approvals" element={<ManageEvents />} />
+            <Route path="/admin/events" element={<ManageEvents />} />
+          </Route>
 
           {/* 404 */}
           <Route path="*" element={<Navigate to="/" />} />

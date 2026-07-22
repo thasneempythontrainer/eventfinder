@@ -18,7 +18,7 @@ const DigitOdometer = ({ digit, height }) => (
       lineHeight: 1,
     }}>
       {[0,1,2,3,4,5,6,7,8,9].map(d => (
-        <span key={d} style={{ display: 'block', height, lineHeight, textAlign: 'center' }}>{d}</span>
+        <span key={d} style={{ display: 'block', height, lineHeight: height, textAlign: 'center' }}>{d}</span>
       ))}
     </span>
   </span>

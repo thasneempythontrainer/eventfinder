@@ -19,19 +19,29 @@ const UserDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [dashStats, bookings] = await Promise.all([
+      const [dashStatsResult, bookingsResult] = await Promise.allSettled([
         dashboardAPI.userDashboard(),
         bookingAPI.myBookings(),
       ]);
 
-      setStats(dashStats.data);
-      const allBookings = bookings.data.results || bookings.data;
-      setRecentBookings(allBookings.slice(0, 5));
-      setUpcomingBookings(
-        allBookings
-          .filter(b => b.status === 'CONFIRMED' && new Date(b.event?.start_date) >= new Date())
-          .slice(0, 5)
-      );
+      if (dashStatsResult.status === 'fulfilled') {
+        setStats(dashStatsResult.value.data);
+      } else {
+        setError('Failed to load dashboard stats');
+        console.error('Stats error:', dashStatsResult.reason);
+      }
+
+      if (bookingsResult.status === 'fulfilled') {
+        const allBookings = bookingsResult.value.data.results || bookingsResult.value.data;
+        setRecentBookings(allBookings.slice(0, 5));
+        setUpcomingBookings(
+          allBookings
+            .filter(b => b.status === 'CONFIRMED' && new Date(b.event?.start_date) >= new Date())
+            .slice(0, 5)
+        );
+      } else {
+        console.error('Bookings error:', bookingsResult.reason);
+      }
     } catch (err) {
       setError('Failed to load dashboard data');
       console.error(err);

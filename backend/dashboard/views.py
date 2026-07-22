@@ -9,7 +9,7 @@ from datetime import timedelta
 from events.models import Event
 from bookings.models import Booking
 from community.models import EventExperience
-from accounts.models import OrganizerProfile
+from accounts.models import User, OrganizerProfile
 from notifications_app.models import Notification
 
 
@@ -40,7 +40,7 @@ class AdminDashboardViewSet(viewsets.ViewSet):
             'completed_events': Event.objects.filter(
                 status='COMPLETED'
             ).count(),
-            'total_users': 0,  # Will be calculated
+            'total_users': User.objects.count(),
             'total_organizers': OrganizerProfile.objects.filter(
                 approval_status='APPROVED'
             ).count(),
