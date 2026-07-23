@@ -158,16 +158,16 @@ class Command(BaseCommand):
         # Helper: download a banner image from the web
         # ------------------------------------------------------------------
         BANNER_URLS = {
-            "music": "https://picsum.photos/seed/music1/800/400",
-            "jazz": "https://picsum.photos/seed/jazz2/800/400",
-            "tech": "https://picsum.photos/seed/tech3/800/400",
-            "food": "https://picsum.photos/seed/food4/800/400",
-            "cricket": "https://picsum.photos/seed/cricket5/800/400",
-            "art": "https://picsum.photos/seed/art6/800/400",
-            "startup": "https://picsum.photos/seed/startup7/800/400",
-            "yoga": "https://picsum.photos/seed/yoga8/800/400",
-            "python": "https://picsum.photos/seed/python9/800/400",
-            "edm": "https://picsum.photos/seed/edm10/800/400",
+            "music": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=400&fit=crop",
+            "jazz": "https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=800&h=400&fit=crop",
+            "tech": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop",
+            "food": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&h=400&fit=crop",
+            "cricket": "https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=800&h=400&fit=crop",
+            "art": "https://images.unsplash.com/photo-1561214115-f2f134cc4912?w=800&h=400&fit=crop",
+            "startup": "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=800&h=400&fit=crop",
+            "yoga": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&h=400&fit=crop",
+            "python": "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=800&h=400&fit=crop",
+            "edm": "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&h=400&fit=crop",
         }
 
         def make_banner(key):
