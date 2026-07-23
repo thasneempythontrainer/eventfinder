@@ -104,6 +104,8 @@ export const eventAPI = {
   pendingApproval: () => api.get('/events/pending_approval/'),
   approveEvent: (id) => api.post(`/events/${id}/approve_event/`),
   rejectEvent: (id) => api.post(`/events/${id}/reject_event/`),
+  analytics: (id) => api.get(`/events/${id}/analytics/`),
+  organizerAnalytics: () => api.get('/events/organizer_analytics/'),
 };
 
 // Booking APIs
@@ -198,6 +200,49 @@ export const dashboardAPI = {
 // Category APIs
 export const categoryAPI = {
   list: () => api.get('/categories/'),
+};
+
+// Event Request (Auction) APIs
+export const eventRequestAPI = {
+  list: (params = {}) => api.get('/event-requests/', { params }),
+  create: (data) => api.post('/event-requests/', data),
+  get: (id) => api.get(`/event-requests/${id}/`),
+  update: (id, data) => api.patch(`/event-requests/${id}/`, data),
+  delete: (id) => api.delete(`/event-requests/${id}/`),
+  support: (id) => api.post(`/event-requests/${id}/support/`),
+  addComment: (id, data) => api.post(`/event-requests/${id}/add_comment/`, data),
+  closeRequest: (id) => api.post(`/event-requests/${id}/close_request/`),
+  selectBid: (id, bidId) => api.post(`/event-requests/${id}/select_bid/`, { bid_id: bidId }),
+  myRequests: () => api.get('/event-requests/my_requests/'),
+};
+
+// Event Bid APIs
+export const eventBidAPI = {
+  list: (params = {}) => api.get('/event-bids/', { params }),
+  create: (data) => api.post('/event-bids/', data),
+  get: (id) => api.get(`/event-bids/${id}/`),
+  myBids: () => api.get('/event-bids/my_bids/'),
+  forRequest: (requestId) => api.get('/event-bids/for_request/', { params: { request_id: requestId } }),
+};
+
+// Event Feedback APIs
+export const eventFeedbackAPI = {
+  list: (params = {}) => api.get('/event-feedbacks/', { params }),
+  create: (data) => api.post('/event-feedbacks/', data),
+  get: (id) => api.get(`/event-feedbacks/${id}/`),
+  eventFeedbacks: (eventId) => api.get('/event-feedbacks/event_feedbacks/', { params: { event_id: eventId } }),
+  myFeedbacks: () => api.get('/event-feedbacks/my_feedbacks/'),
+  feedbackStats: (eventId) => api.get('/event-feedbacks/feedback_stats/', { params: { event_id: eventId } }),
+};
+
+// Black Box Report APIs
+export const blackboxAPI = {
+  list: (params = {}) => api.get('/blackbox-reports/', { params }),
+  get: (id) => api.get(`/blackbox-reports/${id}/`),
+  getForEvent: (eventId) => api.get(`/blackbox-reports/`, { params: { event: eventId } }),
+  organizerReports: () => api.get('/blackbox-reports/organizer_reports/'),
+  platformAnalytics: () => api.get('/blackbox-reports/platform_analytics/'),
+  generateReport: (eventId) => api.post(`/blackbox-reports/${eventId}/generate_report/`),
 };
 
 export default api;

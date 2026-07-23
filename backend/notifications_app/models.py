@@ -24,6 +24,11 @@ class Notification(models.Model):
         ("PROFILE_EDIT_REQUEST", "Profile Edit Request"),
         ("PROFILE_EDIT_APPROVED", "Profile Edit Approved"),
         ("PROFILE_EDIT_REJECTED", "Profile Edit Rejected"),
+        ("EVENT_REQUEST_NEW", "New Event Request"),
+        ("EVENT_REQUEST_BID", "New Bid on Event Request"),
+        ("EVENT_REQUEST_BID_SELECTED", "Bid Selected"),
+        ("EVENT_REQUEST_COMMENT", "Comment on Event Request"),
+        ("EVENT_FEEDBACK_REMINDER", "Feedback Reminder"),
     )
     
     user = models.ForeignKey(

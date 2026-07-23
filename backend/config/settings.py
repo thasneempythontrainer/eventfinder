@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     "chat",
     "dashboard",
     "notifications_app",
+    "auctions",
+    "blackbox",
 ]
 
 # ------------------------------------------------------------------

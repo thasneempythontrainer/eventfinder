@@ -303,6 +303,47 @@ class EventViewSet(viewsets.ModelViewSet):
         serializer = EventImageSerializer(images, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['GET'])
+    def analytics(self, request, pk=None):
+        """Get detailed analytics for a specific event"""
+        event = self.get_object()
+
+        from bookings.models import Booking
+        bookings = Booking.objects.filter(event=event)
+
+        confirmed_bookings = bookings.filter(status='CONFIRMED')
+        pending_bookings = bookings.filter(status='PENDING')
+        cancelled_bookings = bookings.filter(status='CANCELLED')
+
+        confirmed_count = confirmed_bookings.count()
+        pending_count = pending_bookings.count()
+        cancelled_count = cancelled_bookings.count()
+
+        total_revenue = float(
+            sum(b.total_price for b in confirmed_bookings)
+        )
+
+        tickets_sold = sum(b.number_of_tickets for b in confirmed_bookings)
+
+        return Response({
+            'booking_stats': {
+                'confirmed': confirmed_count,
+                'pending': pending_count,
+                'cancelled': cancelled_count,
+                'total': confirmed_count + pending_count + cancelled_count,
+            },
+            'revenue_stats': {
+                'total': total_revenue,
+                'average_per_booking': round(total_revenue / confirmed_count, 2) if confirmed_count else 0,
+            },
+            'ticket_stats': {
+                'total_seats': event.total_seats,
+                'available_seats': event.available_seats,
+                'sold': tickets_sold,
+                'occupancy_rate': round((tickets_sold / event.total_seats) * 100, 1) if event.total_seats else 0,
+            },
+        })
+
     @action(detail=False, methods=['GET'])
     def statistics(self, request):
         """Get event statistics (admin only)"""
@@ -328,6 +369,88 @@ class EventViewSet(viewsets.ModelViewSet):
             'total_events': total_events,
             'upcoming_events': upcoming_events,
             'total_revenue': float(total_revenue)
+        })
+
+    @action(detail=False, methods=['GET'])
+    def organizer_analytics(self, request):
+        """Get analytics for the logged-in organizer's events"""
+        if not request.user.is_authenticated or request.user.role != 'ORGANIZER':
+            return Response(
+                {"detail": "Only organizers can access this"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        from bookings.models import Booking
+
+        events = Event.objects.filter(organizer=request.user)
+        total_events = events.count()
+        completed_events = events.filter(status='COMPLETED').count()
+        upcoming_events = events.filter(status='UPCOMING').count()
+
+        bookings = Booking.objects.filter(event__organizer=request.user)
+        total_bookings = bookings.count()
+        confirmed_bookings = bookings.filter(status='CONFIRMED').count()
+        cancelled_bookings = bookings.filter(status='CANCELLED').count()
+        pending_bookings = bookings.filter(status='PENDING').count()
+
+        total_revenue = float(
+            sum(b.total_price for b in bookings.filter(status='CONFIRMED'))
+        )
+
+        from community.models import EventExperience
+        experience_stats = EventExperience.objects.filter(
+            event__organizer=request.user
+        ).aggregate(avg_rating=Avg('rating'), total=Count('id'))
+
+        overall_avg_rating = experience_stats['avg_rating'] or 0
+        total_experiences = experience_stats['total'] or 0
+
+        positive = EventExperience.objects.filter(event__organizer=request.user, rating__gte=4).count()
+        neutral = EventExperience.objects.filter(event__organizer=request.user, rating=3).count()
+        negative = EventExperience.objects.filter(event__organizer=request.user, rating__lte=2).count()
+        total_sentiment = positive + neutral + negative or 1
+
+        sentiment = {
+            'positive': round((positive / total_sentiment) * 100, 1),
+            'neutral': round((neutral / total_sentiment) * 100, 1),
+            'negative': round((negative / total_sentiment) * 100, 1),
+        }
+
+        category_perf = list(
+            events.values('category__name')
+            .annotate(
+                event_count=Count('id'),
+                avg_rating=Avg('experiences__rating'),
+                booking_count=Count('bookings', filter=Q(bookings__status='CONFIRMED')),
+            )
+            .order_by('-avg_rating')
+            .exclude(category__name__isnull=True)[:10]
+        )
+
+        for cat in category_perf:
+            cat['category'] = cat.pop('category__name') or 'Uncategorized'
+            if cat['avg_rating'] is None:
+                cat['avg_rating'] = 0
+
+        success_count = events.filter(
+            experiences__rating__gte=3.5
+        ).distinct().count()
+        success_rate = round((success_count / completed_events) * 100) if completed_events > 0 else 0
+
+        return Response({
+            'total_events': total_events,
+            'completed_events': completed_events,
+            'upcoming_events': upcoming_events,
+            'total_bookings': total_bookings,
+            'confirmed_bookings': confirmed_bookings,
+            'cancelled_bookings': cancelled_bookings,
+            'pending_bookings': pending_bookings,
+            'total_revenue': total_revenue,
+            'overall_avg_rating': round(overall_avg_rating, 1),
+            'total_experiences': total_experiences,
+            'success_rate': success_rate,
+            'overall_sentiment': sentiment,
+            'category_performance': category_perf,
         })
 
     @action(detail=False, methods=['GET'])

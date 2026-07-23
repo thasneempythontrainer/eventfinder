@@ -1,0 +1,7 @@
+from django.apps import AppConfig
+
+
+class BlackboxConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "blackbox"
+    verbose_name = "Event Black Box Analytics"

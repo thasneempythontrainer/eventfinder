@@ -13,6 +13,8 @@ from bookings.views import BookingViewSet
 from chat.views import ChatRoomViewSet
 from community.views import EventExperienceViewSet
 from notifications_app.views import NotificationViewSet
+from auctions.views import EventRequestViewSet, EventBidViewSet
+from blackbox.views import EventFeedbackViewSet, BlackBoxReportViewSet
 
 # Create router
 router = DefaultRouter()
@@ -27,6 +29,10 @@ router.register(r'chat-rooms', ChatRoomViewSet, basename='chat-room')
 router.register(r'experiences', EventExperienceViewSet, basename='experience')
 router.register(r'notifications', NotificationViewSet, basename='notification')
 router.register(r'profile-edit-requests', ProfileEditRequestViewSet, basename='profile-edit-request')
+router.register(r'event-requests', EventRequestViewSet, basename='event-request')
+router.register(r'event-bids', EventBidViewSet, basename='event-bid')
+router.register(r'event-feedbacks', EventFeedbackViewSet, basename='event-feedback')
+router.register(r'blackbox-reports', BlackBoxReportViewSet, basename='blackbox-report')
 
 urlpatterns = [
     # Admin
