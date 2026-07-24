@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { notificationAPI } from '../../services/api';
 import { Bell, Check, Clock, CheckCircle, XCircle, Calendar, Trash2 } from 'lucide-react';
@@ -6,6 +7,7 @@ import './NotificationBell.css';
 
 const NotificationBell = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -92,6 +94,43 @@ const NotificationBell = () => {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  const getNotificationLink = (n) => {
+    if (n.related_event) return `/events/${n.related_event}`;
+    if (n.related_booking) return '/user/bookings';
+    switch (n.notification_type) {
+      case 'ORGANIZER_APPROVAL':
+      case 'ORGANIZER_REJECTED':
+        return user?.role === 'ADMIN' ? '/admin/approvals' : '/organizer/dashboard';
+      case 'EVENT_APPROVED':
+      case 'EVENT_REJECTED':
+      case 'EVENT_UPDATE':
+        return '/events';
+      case 'BOOKING_CONFIRMATION':
+      case 'BOOKING_REMINDER':
+        return '/user/bookings';
+      case 'EVENT_REQUEST_NEW':
+        return user?.role === 'ADMIN' ? '/admin/requests' : '/event-requests';
+      case 'EVENT_REQUEST_BID':
+      case 'EVENT_REQUEST_BID_SELECTED':
+        return user?.role === 'ORGANIZER' ? '/organizer/bids' : '/event-requests';
+      case 'EVENT_REQUEST_COMMENT':
+        return '/event-requests';
+      case 'EVENT_FEEDBACK_REMINDER':
+        return user?.role === 'USER' ? '/user/experiences' : '/user/dashboard';
+      default:
+        return user?.role === 'ADMIN' ? '/admin/dashboard'
+          : user?.role === 'ORGANIZER' ? '/organizer/dashboard'
+          : '/user/dashboard';
+    }
+  };
+
+  const handleNotificationClick = async (n) => {
+    const link = getNotificationLink(n);
+    if (!n.is_read) await markAsRead(n.id);
+    setIsOpen(false);
+    navigate(link);
+  };
+
   if (!user || user.role === 'USER') return null;
 
   return (
@@ -115,7 +154,7 @@ const NotificationBell = () => {
             ) : notifications.length > 0 ? (
               notifications.map(n => (
                 <div key={n.id} className={`notif-item ${!n.is_read ? 'unread' : ''}`}
-                     onClick={() => !n.is_read && markAsRead(n.id)}>
+                     onClick={() => handleNotificationClick(n)}>
                   <div className="notif-icon">{getIcon(n.notification_type)}</div>
                   <div className="notif-content">
                     <div className="notif-title">{n.title}</div>
