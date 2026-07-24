@@ -27,11 +27,41 @@ class EventFilter(FilterSet):
 
 class CategoryViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing event categories
+    ViewSet for managing event categories.
+    Read access for everyone, write access for admins only.
     """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return [IsAuthenticatedOrReadOnly()]
+        return [IsAuthenticated()]
+
+    def perform_create(self, serializer):
+        if self.request.user.role != 'ADMIN':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only admins can create categories.")
+        serializer.save()
+
+    def perform_update(self, serializer):
+        if self.request.user.role != 'ADMIN':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only admins can update categories.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if self.request.user.role != 'ADMIN':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only admins can delete categories.")
+        event_count = instance.events.count()
+        if event_count > 0:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied(
+                f"Cannot delete '{instance.name}' — {event_count} event(s) use this category. "
+                "Reassign or remove those events first."
+            )
+        instance.delete()
 
 
 class EventImageViewSet(viewsets.ModelViewSet):

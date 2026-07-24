@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, Ticket, Star, ListPlus, PlusCircle, CheckCircle,
   CalendarDays, LogOut, Home, Search, ClipboardList, KeyRound, PenLine, Menu,
-  User, Users, Gavel, BarChart3, TrendingUp
+  User, Users, Gavel, BarChart3, TrendingUp, Tag
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import './Navbar.css';
@@ -185,6 +185,13 @@ const Navbar = () => {
                         <CalendarDays size={16} /> All Events
                       </Link>
                       <Link 
+                        to="/admin/categories"
+                        className="dropdown-item"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <Tag size={16} /> Categories
+                      </Link>
+                      <Link 
                         to="/admin/requests"
                         className="dropdown-item"
                         onClick={() => setUserMenuOpen(false)}
@@ -347,6 +354,13 @@ const Navbar = () => {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Users size={16} /> Users & Organizers
+                    </Link>
+                    <Link 
+                      to="/admin/categories"
+                      className="mobile-nav-link"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Tag size={16} /> Categories
                     </Link>
                     <Link 
                       to="/admin/requests"

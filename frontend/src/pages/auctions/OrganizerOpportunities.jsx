@@ -37,7 +37,7 @@ export default function OrganizerOpportunities() {
       setLoading(true);
       setError(null);
       const response = await eventRequestAPI.list();
-      const allRequests = response.data || response || [];
+      const allRequests = response.data.results || response.data || [];
       const openRequests = allRequests.filter(
         (r) => r.status === "OPEN" || r.status === "RECEIVING_BIDS"
       );
@@ -46,9 +46,9 @@ export default function OrganizerOpportunities() {
       const counts = {};
       for (const req of openRequests) {
         try {
-          const bidRes = await eventBidAPI.list({ request_id: req.id });
-          const bids = bidRes.data || bidRes || [];
-          counts[req.id] = bids.length;
+          const bidRes = await eventBidAPI.forRequest(req.id);
+          const bids = bidRes.data.results || bidRes.data || [];
+          counts[req.id] = Array.isArray(bids) ? bids.length : 0;
         } catch {
           counts[req.id] = 0;
         }
@@ -75,10 +75,10 @@ export default function OrganizerOpportunities() {
   };
 
   const categories = [
-    ...new Set(requests.map((r) => r.category).filter(Boolean)),
+    ...new Set(requests.map((r) => r.category_name).filter(Boolean)),
   ];
   const locations = [
-    ...new Set(requests.map((r) => r.location).filter(Boolean)),
+    ...new Set(requests.map((r) => r.preferred_location).filter(Boolean)),
   ];
 
   const filtered = requests.filter((r) => {
@@ -86,8 +86,8 @@ export default function OrganizerOpportunities() {
       !searchTerm ||
       r.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchCategory = !categoryFilter || r.category === categoryFilter;
-    const matchLocation = !locationFilter || r.location === locationFilter;
+    const matchCategory = !categoryFilter || r.category_name === categoryFilter;
+    const matchLocation = !locationFilter || r.preferred_location === locationFilter;
     const matchDemand = !demandFilter || r.demand_level === demandFilter;
     return matchSearch && matchCategory && matchLocation && matchDemand;
   });
@@ -194,22 +194,22 @@ export default function OrganizerOpportunities() {
               <div className="auction-card-meta">
                 <span className="meta-item">
                   <Users size={14} />
-                  Posted by {request.user_name || request.user?.name || "Unknown"}
+                  Posted by {request.user_username || "Unknown"}
                 </span>
                 <span className="meta-item">
                   <MapPin size={14} />
-                  {request.location || "No location"}
+                  {request.preferred_location || "No location"}
                 </span>
                 <span className="meta-item">
                   <Calendar size={14} />
-                  {request.event_date
-                    ? new Date(request.event_date).toLocaleDateString()
+                  {request.preferred_date
+                    ? new Date(request.preferred_date).toLocaleDateString()
                     : "TBD"}
                 </span>
                 <span className="meta-item">
                   <DollarSign size={14} />
-                  {request.budget
-                    ? `$${Number(request.budget).toLocaleString()}`
+                  {(request.budget_min || request.budget_max)
+                    ? `$${Number(request.budget_min || 0).toLocaleString()} - $${Number(request.budget_max || 0).toLocaleString()}`
                     : "Budget TBD"}
                 </span>
                 <span className="meta-item">

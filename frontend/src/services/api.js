@@ -199,7 +199,11 @@ export const dashboardAPI = {
 
 // Category APIs
 export const categoryAPI = {
-  list: () => api.get('/categories/'),
+  list: (params = {}) => api.get('/categories/', { params }),
+  get: (id) => api.get(`/categories/${id}/`),
+  create: (data) => api.post('/categories/', data),
+  update: (id, data) => api.patch(`/categories/${id}/`, data),
+  delete: (id) => api.delete(`/categories/${id}/`),
 };
 
 // Event Request (Auction) APIs

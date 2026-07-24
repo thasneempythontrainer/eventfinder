@@ -53,11 +53,12 @@ class EventBidSerializer(serializers.ModelSerializer):
     organizer_organization = serializers.SerializerMethodField()
     organizer_rating = serializers.SerializerMethodField()
     organizer_events_count = serializers.SerializerMethodField()
+    request_title = serializers.CharField(source='request.title', read_only=True)
 
     class Meta:
         model = EventBid
         fields = [
-            'id', 'request', 'organizer', 'organizer_username',
+            'id', 'request', 'request_title', 'organizer', 'organizer_username',
             'organizer_organization', 'organizer_rating',
             'organizer_events_count',
             'event_plan', 'proposed_date', 'proposed_time', 'venue',

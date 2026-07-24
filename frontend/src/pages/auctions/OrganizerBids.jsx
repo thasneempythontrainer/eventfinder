@@ -30,7 +30,7 @@ export default function OrganizerBids() {
       setLoading(true);
       setError(null);
       const response = await eventBidAPI.myBids();
-      setBids(response.data || response || []);
+      setBids(response.data.results || response.data || []);
     } catch (err) {
       setError("Failed to load your bids. Please try again.");
     } finally {
@@ -152,9 +152,9 @@ export default function OrganizerBids() {
                 )}
 
                 <div className="bid-card-actions">
-                  {bid.request_id && (
+                  {bid.request && (
                     <Link
-                      to={`/event-requests/${bid.request_id}`}
+                      to={`/event-requests/${bid.request}`}
                       className="btn btn-secondary"
                     >
                       <ExternalLink size={14} />

@@ -174,8 +174,8 @@ const EventRequestsList = () => {
                 </div>
                 <div className="request-card-body">
                   <div className="request-card-meta">
-                    {request.user_name && (
-                      <span><Users size={14} /> {request.user_name}</span>
+                    {request.user_username && (
+                      <span><Users size={14} /> {request.user_username}</span>
                     )}
                     {(request.preferred_location || request.location) && (
                       <span><MapPin size={14} /> {request.preferred_location || request.location}</span>

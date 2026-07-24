@@ -4,10 +4,15 @@ from .models import Category, Event, EventImage
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    event_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
-        fields = ['id', 'name', 'description', 'icon', 'created_at']
+        fields = ['id', 'name', 'description', 'icon', 'created_at', 'updated_at', 'event_count']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_event_count(self, obj):
+        return obj.events.count()
 
 
 class EventImageSerializer(serializers.ModelSerializer):

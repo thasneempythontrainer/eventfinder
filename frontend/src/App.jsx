@@ -50,6 +50,7 @@ import UsersList from './pages/admin/UsersList';
 import UserDetail from './pages/admin/UserDetail';
 import AdminRequests from './pages/admin/AdminRequests';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
+import ManageCategories from './pages/admin/ManageCategories';
 
 // Components
 import Navbar from './components/common/Navbar';
@@ -139,6 +140,7 @@ const AppContent = () => {
             <Route path="/admin/users/:id" element={<UserDetail />} />
             <Route path="/admin/requests" element={<AdminRequests />} />
             <Route path="/admin/analytics" element={<AdminAnalytics />} />
+            <Route path="/admin/categories" element={<ManageCategories />} />
           </Route>
 
           {/* Profile & Payment - accessible by all authenticated roles */}
