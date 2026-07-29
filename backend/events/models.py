@@ -118,3 +118,83 @@ class EventImage(models.Model):
 
     def __str__(self):
         return f"{self.event.title} Image"
+
+
+class ParticipantRequest(models.Model):
+    STATUS_CHOICES = (
+        ("OPEN", "Open"),
+        ("FULFILLED", "Fulfilled"),
+        ("CLOSED", "Closed"),
+    )
+
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.CASCADE,
+        related_name="participant_requests",
+    )
+
+    organizer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="participant_requests",
+    )
+
+    description = models.TextField()
+
+    required_participants = models.PositiveIntegerField()
+
+    current_participants = models.PositiveIntegerField(default=0)
+
+    deadline = models.DateTimeField(null=True, blank=True)
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="OPEN",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Request for {self.event.title} by {self.organizer.username}"
+
+
+class ParticipantResponse(models.Model):
+    STATUS_CHOICES = (
+        ("INTERESTED", "Interested"),
+        ("SELECTED", "Selected"),
+        ("DECLINED", "Declined"),
+    )
+
+    participant_request = models.ForeignKey(
+        ParticipantRequest,
+        on_delete=models.CASCADE,
+        related_name="responses",
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="participant_responses",
+    )
+
+    message = models.TextField(blank=True, default="")
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="INTERESTED",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("participant_request", "user")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.participant_request}"

@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, Ticket, Star, ListPlus, PlusCircle, CheckCircle,
   CalendarDays, LogOut, Home, Search, ClipboardList, KeyRound, PenLine, Menu,
-  User, Users, Gavel, BarChart3, TrendingUp, Tag
+  User, Users, Handshake, BarChart3, Tag
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import './Navbar.css';
@@ -125,11 +125,11 @@ const Navbar = () => {
                         <Star size={16} /> My Experiences
                       </Link>
                       <Link 
-                        to="/event-requests"
+                        to="/user/participant-requests"
                         className="dropdown-item"
                         onClick={() => setUserMenuOpen(false)}
                       >
-                        <Gavel size={16} /> Event Requests
+                        <Handshake size={16} /> Participate
                       </Link>
                     </>
                   )}
@@ -151,18 +151,11 @@ const Navbar = () => {
                         <PlusCircle size={16} /> Create Event
                       </Link>
                       <Link 
-                        to="/organizer/opportunities"
+                        to="/organizer/participant-requests"
                         className="dropdown-item"
                         onClick={() => setUserMenuOpen(false)}
                       >
-                        <TrendingUp size={16} /> Opportunities
-                      </Link>
-                      <Link 
-                        to="/organizer/bids"
-                        className="dropdown-item"
-                        onClick={() => setUserMenuOpen(false)}
-                      >
-                        <Gavel size={16} /> My Bids
+                        <Handshake size={16} /> Participant Requests
                       </Link>
                       <Link 
                         to="/organizer/analytics"
@@ -203,13 +196,6 @@ const Navbar = () => {
                         onClick={() => setUserMenuOpen(false)}
                       >
                         <Tag size={16} /> Categories
-                      </Link>
-                      <Link 
-                        to="/admin/requests"
-                        className="dropdown-item"
-                        onClick={() => setUserMenuOpen(false)}
-                      >
-                        <Gavel size={16} /> Event Requests
                       </Link>
                       <Link 
                         to="/admin/analytics"
@@ -305,11 +291,11 @@ const Navbar = () => {
                       <Star size={16} /> Experiences
                     </Link>
                     <Link 
-                      to="/event-requests"
+                      to="/user/participant-requests"
                       className="mobile-nav-link"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      <Gavel size={16} /> Event Requests
+                      <Handshake size={16} /> Participate
                     </Link>
                   </>
                 )}
@@ -330,18 +316,11 @@ const Navbar = () => {
                       <PlusCircle size={16} /> Create Event
                     </Link>
                     <Link 
-                      to="/organizer/opportunities"
+                      to="/organizer/participant-requests"
                       className="mobile-nav-link"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      <TrendingUp size={16} /> Opportunities
-                    </Link>
-                    <Link 
-                      to="/organizer/bids"
-                      className="mobile-nav-link"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <Gavel size={16} /> My Bids
+                      <Handshake size={16} /> Participant Requests
                     </Link>
                     <Link 
                       to="/organizer/analytics"
@@ -374,13 +353,6 @@ const Navbar = () => {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Tag size={16} /> Categories
-                    </Link>
-                    <Link 
-                      to="/admin/requests"
-                      className="mobile-nav-link"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <Gavel size={16} /> Event Requests
                     </Link>
                     <Link 
                       to="/admin/analytics"

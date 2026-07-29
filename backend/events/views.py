@@ -10,10 +10,11 @@ from datetime import datetime, timedelta
 
 from accounts.models import User
 from notifications_app.models import Notification
-from .models import Event, Category, EventImage
+from .models import Event, Category, EventImage, ParticipantRequest, ParticipantResponse
 from .serializers import (
     EventSerializer, EventDetailSerializer, EventCreateSerializer,
-    EventUpdateSerializer, CategorySerializer, EventImageSerializer
+    EventUpdateSerializer, CategorySerializer, EventImageSerializer,
+    ParticipantRequestSerializer, ParticipantResponseSerializer,
 )
 
 
@@ -559,3 +560,111 @@ class EventViewSet(viewsets.ModelViewSet):
         )
 
         return Response({'status': 'Event rejected'})
+
+
+class ParticipantRequestViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        qs = ParticipantRequest.objects.all()
+
+        event_id = self.request.query_params.get('event_id')
+        status_param = self.request.query_params.get('status')
+
+        if event_id:
+            qs = qs.filter(event_id=event_id)
+        if status_param:
+            qs = qs.filter(status=status_param)
+
+        if self.request.user.is_authenticated:
+            if self.request.user.role == 'ORGANIZER':
+                qs = qs.filter(organizer=self.request.user)
+            elif self.request.user.role == 'USER':
+                qs = qs.filter(status='OPEN')
+
+        return qs
+
+    def get_serializer_class(self):
+        return ParticipantRequestSerializer
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role != 'ORGANIZER':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only organizers can create participant requests.")
+
+        event_id = self.request.data.get('event')
+        event = get_object_or_404(Event, id=event_id)
+
+        if event.organizer != user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You can only create requests for your own events.")
+
+        serializer.save(organizer=user)
+
+
+class ParticipantResponseViewSet(viewsets.ModelViewSet):
+    serializer_class = ParticipantResponseSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'ADMIN':
+            return ParticipantResponse.objects.all()
+        if user.role == 'ORGANIZER':
+            return ParticipantResponse.objects.filter(
+                participant_request__organizer=user
+            )
+        return ParticipantResponse.objects.filter(user=user)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role != 'USER':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only users can respond to participant requests.")
+
+        request_id = self.request.data.get('participant_request')
+        participant_request = get_object_or_404(ParticipantRequest, id=request_id)
+
+        if participant_request.status != 'OPEN':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("This participant request is no longer open.")
+
+        if ParticipantResponse.objects.filter(
+            participant_request=participant_request,
+            user=user,
+        ).exists():
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You have already responded to this request.")
+
+        response = serializer.save(user=user)
+
+        participant_request.current_participants = participant_request.responses.filter(
+            status='INTERESTED'
+        ).count()
+        if participant_request.current_participants >= participant_request.required_participants:
+            participant_request.status = 'FULFILLED'
+        participant_request.save()
+
+        # Notify organizer
+        from notifications_app.models import Notification
+        Notification.objects.create(
+            user=participant_request.organizer,
+            notification_type='PARTICIPANT_RESPONSE',
+            title='New Participant Response',
+            message=(
+                f'{user.username} is interested in participating in '
+                f'"{participant_request.event.title}".'
+            ),
+            related_event=participant_request.event,
+        )
+
+    def perform_update(self, serializer):
+        user = self.request.user
+        instance = self.get_object()
+
+        if instance.participant_request.organizer != user and user.role != 'ADMIN':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only the request organizer can update responses.")
+
+        serializer.save()

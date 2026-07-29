@@ -206,27 +206,21 @@ export const categoryAPI = {
   delete: (id) => api.delete(`/categories/${id}/`),
 };
 
-// Event Request (Auction) APIs
-export const eventRequestAPI = {
-  list: (params = {}) => api.get('/event-requests/', { params }),
-  create: (data) => api.post('/event-requests/', data),
-  get: (id) => api.get(`/event-requests/${id}/`),
-  update: (id, data) => api.patch(`/event-requests/${id}/`, data),
-  delete: (id) => api.delete(`/event-requests/${id}/`),
-  support: (id) => api.post(`/event-requests/${id}/support/`),
-  addComment: (id, data) => api.post(`/event-requests/${id}/add_comment/`, data),
-  closeRequest: (id) => api.post(`/event-requests/${id}/close_request/`),
-  selectBid: (id, bidId) => api.post(`/event-requests/${id}/select_bid/`, { bid_id: bidId }),
-  myRequests: () => api.get('/event-requests/my_requests/'),
+// Participant Request APIs
+export const participantRequestAPI = {
+  list: (params = {}) => api.get('/participant-requests/', { params }),
+  create: (data) => api.post('/participant-requests/', data),
+  get: (id) => api.get(`/participant-requests/${id}/`),
+  update: (id, data) => api.patch(`/participant-requests/${id}/`, data),
+  delete: (id) => api.delete(`/participant-requests/${id}/`),
 };
 
-// Event Bid APIs
-export const eventBidAPI = {
-  list: (params = {}) => api.get('/event-bids/', { params }),
-  create: (data) => api.post('/event-bids/', data),
-  get: (id) => api.get(`/event-bids/${id}/`),
-  myBids: () => api.get('/event-bids/my_bids/'),
-  forRequest: (requestId) => api.get('/event-bids/for_request/', { params: { request_id: requestId } }),
+// Participant Response APIs
+export const participantResponseAPI = {
+  list: (params = {}) => api.get('/participant-responses/', { params }),
+  create: (data) => api.post('/participant-responses/', data),
+  get: (id) => api.get(`/participant-responses/${id}/`),
+  update: (id, data) => api.patch(`/participant-responses/${id}/`, data),
 };
 
 // Event Feedback APIs

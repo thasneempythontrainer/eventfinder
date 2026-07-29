@@ -310,6 +310,7 @@ const EventCard = ({ event }) => {
         ) : (
           <div className="event-image-placeholder">No Image</div>
         )}
+        {event.is_fully_booked && event.status === 'UPCOMING' && <span className="badge badge-soldout">FULLY BOOKED</span>}
         {event.status === 'ONGOING' && <span className="badge badge-live">LIVE</span>}
         {event.status === 'COMPLETED' && <span className="badge badge-completed">COMPLETED</span>}
       </div>

@@ -331,6 +331,9 @@ const EventDetail = () => {
             <h1>{event.title}</h1>
             <div className="event-status">
               <span className={`status ${event.status.toLowerCase()}`}>{event.status}</span>
+              {event.is_fully_booked && event.status === 'UPCOMING' && (
+                <span className="status soldout" style={{ marginLeft: '8px', background: '#e74c3c' }}>FULLY BOOKED</span>
+              )}
             </div>
           </div>
         </div>
@@ -392,7 +395,7 @@ const EventDetail = () => {
                   <p><strong>Ticket Price:</strong> ₹{event.ticket_price}</p>
                   <p><strong>Available Seats:</strong> {availableSeats}</p>
                   {availableSeats === 0 && (
-                    <p style={{ color: '#e74c3c' }}><AlertTriangle size={14} /> Event is SOLD OUT</p>
+                    <p style={{ color: '#e74c3c' }}><AlertTriangle size={14} /> Event is FULLY BOOKED - No seats available</p>
                   )}
                 </div>
 
@@ -703,7 +706,8 @@ const EventDetail = () => {
               </>
             ) : (
               <div className="sold-out">
-                <p><Ban size={16} /> This event is SOLD OUT</p>
+                <p><Ban size={16} /> This event is FULLY BOOKED</p>
+                <p className="ended-sub">All seats have been reserved. Check back later in case seats become available.</p>
               </div>
             )}
 

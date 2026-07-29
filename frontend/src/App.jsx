@@ -17,12 +17,11 @@ import Profile from './pages/common/Profile';
 import PaymentReceipt from './pages/common/PaymentReceipt';
 import PaymentFailed from './pages/common/PaymentFailed';
 
-// Auction Pages
-import EventRequestsList from './pages/auctions/EventRequestsList';
-import CreateEventRequest from './pages/auctions/CreateEventRequest';
-import EventRequestDetail from './pages/auctions/EventRequestDetail';
-import OrganizerOpportunities from './pages/auctions/OrganizerOpportunities';
-import OrganizerBids from './pages/auctions/OrganizerBids';
+// Participant Request Pages
+import ParticipantRequestList from './pages/participants/ParticipantRequestList';
+import CreateParticipantRequest from './pages/participants/CreateParticipantRequest';
+import OrganizerParticipantRequests from './pages/participants/OrganizerParticipantRequests';
+import ParticipantRequestDetail from './pages/participants/ParticipantRequestDetail';
 
 // Black Box Pages
 import EventFeedbackForm from './pages/blackbox/EventFeedbackForm';
@@ -116,7 +115,7 @@ const AppContent = () => {
             <Route path="/user/dashboard" element={<UserDashboard />} />
             <Route path="/user/bookings" element={<UserBookings />} />
             <Route path="/user/experiences" element={<UserExperiences />} />
-            <Route path="/user/create-request" element={<CreateEventRequest />} />
+            <Route path="/user/participant-requests" element={<ParticipantRequestList />} />
           </Route>
 
           {/* Organizer Routes */}
@@ -126,8 +125,8 @@ const AppContent = () => {
             <Route path="/organizer/create-event" element={<CreateEvent />} />
             <Route path="/organizer/events/:id/edit" element={<EditEvent />} />
             <Route path="/organizer/events/:id/analytics" element={<EventAnalytics />} />
-            <Route path="/organizer/opportunities" element={<OrganizerOpportunities />} />
-            <Route path="/organizer/bids" element={<OrganizerBids />} />
+            <Route path="/organizer/participant-requests" element={<OrganizerParticipantRequests />} />
+            <Route path="/organizer/create-participant-request" element={<CreateParticipantRequest />} />
             <Route path="/organizer/analytics" element={<OrganizerAnalytics />} />
           </Route>
 
@@ -150,10 +149,9 @@ const AppContent = () => {
             <Route path="/payment/failed" element={<PaymentFailed />} />
           </Route>
 
-          {/* Auction - accessible by all authenticated roles */}
+          {/* Participant Requests - accessible by all authenticated roles */}
           <Route element={<ProtectedRoute allowedRoles={['USER', 'ORGANIZER', 'ADMIN']} />}>
-            <Route path="/event-requests" element={<EventRequestsList />} />
-            <Route path="/event-requests/:id" element={<EventRequestDetail />} />
+            <Route path="/participant-requests/:id" element={<ParticipantRequestDetail />} />
           </Route>
 
           {/* Black Box - accessible by all authenticated roles */}

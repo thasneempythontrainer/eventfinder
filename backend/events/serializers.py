@@ -1,6 +1,7 @@
 from rest_framework import serializers
+from django.utils import timezone
 
-from .models import Category, Event, EventImage
+from .models import Category, Event, EventImage, ParticipantRequest, ParticipantResponse
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -62,6 +63,7 @@ class EventSerializer(serializers.ModelSerializer):
     )
 
     booking_count = serializers.SerializerMethodField()
+    is_fully_booked = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -73,12 +75,16 @@ class EventSerializer(serializers.ModelSerializer):
             'venue', 'city',
             'latitude', 'longitude', 'start_date', 'end_date', 'start_time',
             'end_time', 'banner', 'ticket_price', 'total_seats', 'available_seats',
-            'status', 'gallery', 'images', 'booking_count', 'created_at', 'updated_at'
+            'status', 'gallery', 'images', 'booking_count', 'is_fully_booked',
+            'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'available_seats']
 
     def get_booking_count(self, obj):
         return obj.bookings.filter(status='CONFIRMED').count()
+
+    def get_is_fully_booked(self, obj):
+        return obj.available_seats == 0
 
 
 class EventCreateSerializer(serializers.ModelSerializer):
@@ -145,6 +151,7 @@ class EventDetailSerializer(serializers.ModelSerializer):
     images = EventImageSerializer(source="gallery", many=True, read_only=True)
     booking_count = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
+    is_fully_booked = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -156,8 +163,11 @@ class EventDetailSerializer(serializers.ModelSerializer):
             'city', 'latitude', 'longitude', 'start_date', 'end_date',
             'start_time', 'end_time', 'banner', 'ticket_price', 'total_seats',
             'available_seats', 'status', 'gallery', 'images', 'booking_count',
-            'average_rating', 'created_at', 'updated_at'
+            'average_rating', 'is_fully_booked', 'created_at', 'updated_at'
         ]
+
+    def get_is_fully_booked(self, obj):
+        return obj.available_seats == 0
 
     def get_organizer_profile_picture(self, obj):
         if obj.organizer.profile_picture:
@@ -173,3 +183,48 @@ class EventDetailSerializer(serializers.ModelSerializer):
         from django.db.models import Avg
         avg_rating = obj.experiences.aggregate(Avg('rating'))['rating__avg']
         return round(avg_rating, 2) if avg_rating else 0
+
+
+class ParticipantRequestSerializer(serializers.ModelSerializer):
+    event_title = serializers.CharField(source="event.title", read_only=True)
+    organizer_name = serializers.CharField(source="organizer.username", read_only=True)
+    response_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ParticipantRequest
+        fields = [
+            'id', 'event', 'event_title', 'organizer', 'organizer_name',
+            'description', 'required_participants', 'current_participants',
+            'deadline', 'status', 'response_count', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'organizer', 'current_participants', 'created_at', 'updated_at']
+
+    def get_response_count(self, obj):
+        return obj.responses.count()
+
+    def validate_required_participants(self, value):
+        if value < 1:
+            raise serializers.ValidationError("Required participants must be at least 1.")
+        return value
+
+    def validate_deadline(self, value):
+        if value is not None and value < timezone.now():
+            raise serializers.ValidationError("Deadline cannot be in the past.")
+        return value
+
+    def validate_status(self, value):
+        return 'OPEN'
+
+
+class ParticipantResponseSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source="user.username", read_only=True)
+    request_description = serializers.CharField(source="participant_request.description", read_only=True)
+    event_title = serializers.CharField(source="participant_request.event.title", read_only=True)
+
+    class Meta:
+        model = ParticipantResponse
+        fields = [
+            'id', 'participant_request', 'request_description', 'event_title',
+            'user', 'user_name', 'message', 'status', 'created_at'
+        ]
+        read_only_fields = ['id', 'user', 'created_at']

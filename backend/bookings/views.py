@@ -17,6 +17,7 @@ from .models import Booking, Ticket
 from .serializers import BookingSerializer, BookingCreateSerializer, BookingUpdateSerializer
 from events.models import Event
 from .ticket_pdf import generate_ticket_pdf
+from notifications_app.models import Notification
 
 razorpay_client = razorpay.Client(
     auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
@@ -95,7 +96,19 @@ class BookingViewSet(viewsets.ModelViewSet):
         
         event.available_seats -= num_tickets
         event.save()
-        
+
+        if event.available_seats == 0:
+            Notification.objects.create(
+                user=event.organizer,
+                notification_type='FULLY_BOOKED',
+                title='Event Fully Booked!',
+                message=(
+                    f'Your event "{event.title}" is now fully booked! '
+                    f'All {event.total_seats} seats have been reserved.'
+                ),
+                related_event=event,
+            )
+
         serializer = BookingSerializer(booking)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -244,6 +257,18 @@ class BookingViewSet(viewsets.ModelViewSet):
         booking.event.available_seats -= booking.number_of_tickets
         booking.event.save()
 
+        if booking.event.available_seats == 0:
+            Notification.objects.create(
+                user=booking.event.organizer,
+                notification_type='FULLY_BOOKED',
+                title='Event Fully Booked!',
+                message=(
+                    f'Your event "{booking.event.title}" is now fully booked! '
+                    f'All {booking.event.total_seats} seats have been reserved.'
+                ),
+                related_event=booking.event,
+            )
+
         return Response(BookingSerializer(booking).data)
 
     @action(detail=False, methods=['GET'])
@@ -270,10 +295,24 @@ class BookingViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        was_fully_booked = booking.event.available_seats == 0
         # Restore available seats
         booking.event.available_seats += booking.number_of_tickets
         booking.event.save()
-        
+
+        if was_fully_booked:
+            Notification.objects.create(
+                user=booking.event.organizer,
+                notification_type='SEATS_AVAILABLE',
+                title='Seats Became Available',
+                message=(
+                    f'Seats are now available again for "{booking.event.title}" '
+                    f'due to a cancellation. {booking.event.available_seats} '
+                    f'seat(s) are now free.'
+                ),
+                related_event=booking.event,
+            )
+
         booking.status = "CANCELLED"
         booking.save()
         

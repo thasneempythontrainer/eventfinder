@@ -108,13 +108,12 @@ const NotificationBell = () => {
       case 'BOOKING_CONFIRMATION':
       case 'BOOKING_REMINDER':
         return '/user/bookings';
-      case 'EVENT_REQUEST_NEW':
-        return user?.role === 'ADMIN' ? '/admin/requests' : '/event-requests';
-      case 'EVENT_REQUEST_BID':
-      case 'EVENT_REQUEST_BID_SELECTED':
-        return user?.role === 'ORGANIZER' ? '/organizer/bids' : '/event-requests';
-      case 'EVENT_REQUEST_COMMENT':
-        return '/event-requests';
+      case 'PARTICIPANT_REQUEST_NEW':
+      case 'PARTICIPANT_RESPONSE':
+        return `/participant-requests/${n.related_event}`;
+      case 'FULLY_BOOKED':
+      case 'SEATS_AVAILABLE':
+        return n.related_event ? `/events/${n.related_event}` : '/organizer/events';
       case 'EVENT_FEEDBACK_REMINDER':
         return user?.role === 'USER' ? '/user/experiences' : '/user/dashboard';
       default:

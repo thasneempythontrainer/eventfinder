@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     "chat",
     "dashboard",
     "notifications_app",
-    "auctions",
     "blackbox",
 ]
 
@@ -103,8 +102,8 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
         "NAME": "eventfinder_db",
-        "USER": "root",
-        "PASSWORD": "toor",
+        "USER": "user",
+        "PASSWORD": "root",
         "HOST": "localhost",
         "PORT": "3306",
     }

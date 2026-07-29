@@ -24,11 +24,11 @@ class Notification(models.Model):
         ("PROFILE_EDIT_REQUEST", "Profile Edit Request"),
         ("PROFILE_EDIT_APPROVED", "Profile Edit Approved"),
         ("PROFILE_EDIT_REJECTED", "Profile Edit Rejected"),
-        ("EVENT_REQUEST_NEW", "New Event Request"),
-        ("EVENT_REQUEST_BID", "New Bid on Event Request"),
-        ("EVENT_REQUEST_BID_SELECTED", "Bid Selected"),
-        ("EVENT_REQUEST_COMMENT", "Comment on Event Request"),
         ("EVENT_FEEDBACK_REMINDER", "Feedback Reminder"),
+        ("FULLY_BOOKED", "Event Fully Booked"),
+        ("SEATS_AVAILABLE", "Seats Became Available"),
+        ("PARTICIPANT_REQUEST_NEW", "New Participant Request"),
+        ("PARTICIPANT_RESPONSE", "New Participant Response"),
     )
     
     user = models.ForeignKey(
