@@ -1,6 +1,7 @@
 from django.db.models import Q
 from django.http import HttpResponse
 from django.conf import settings
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -13,15 +14,30 @@ import hmac
 from decimal import Decimal
 from datetime import datetime
 
-from .models import Booking, Ticket
-from .serializers import BookingSerializer, BookingCreateSerializer, BookingUpdateSerializer
+from .models import Booking, Ticket, WaitlistEntry
+from .serializers import (
+    BookingSerializer, BookingCreateSerializer, BookingUpdateSerializer,
+    WaitlistEntrySerializer,
+)
 from events.models import Event
 from .ticket_pdf import generate_ticket_pdf
+from .waitlist import assign_waitlist_seats
 from notifications_app.models import Notification
 
 razorpay_client = razorpay.Client(
     auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
 )
+
+
+def _check_booking_open(event):
+    """Return an error message if the event is not open for booking, else None."""
+    if event.status in ("COMPLETED", "CANCELLED"):
+        return f"This event has {event.status.lower()} and tickets are no longer available."
+    if event.status == "PENDING":
+        return "This event is still pending approval and not yet available for booking."
+    if event.booking_deadline and timezone.now() > event.booking_deadline:
+        return "The booking deadline for this event has passed."
+    return None
 
 
 class BookingViewSet(viewsets.ModelViewSet):
@@ -58,13 +74,14 @@ class BookingViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         
         event = get_object_or_404(Event, id=request.data.get('event'))
-        
-        if event.status in ("COMPLETED", "CANCELLED"):
+
+        blocked_reason = _check_booking_open(event)
+        if blocked_reason:
             return Response(
-                {"detail": f"This event has {event.status.lower()} and tickets are no longer available."},
+                {"detail": blocked_reason},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         num_tickets = serializer.validated_data.get('number_of_tickets')
         
         if num_tickets > event.available_seats:
@@ -83,7 +100,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             number_of_tickets=num_tickets,
             total_price=total_price,
             booking_reference=booking_reference,
-            status="CONFIRMED"
+            status="PENDING_APPROVAL"
         )
         
         for i in range(num_tickets):
@@ -134,9 +151,10 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         event = get_object_or_404(Event, id=event_id)
 
-        if event.status in ("COMPLETED", "CANCELLED"):
+        blocked_reason = _check_booking_open(event)
+        if blocked_reason:
             return Response(
-                {"detail": f"This event has {event.status.lower()} and tickets are no longer available."},
+                {"detail": blocked_reason},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -243,7 +261,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             )
 
         booking.payment_id = razorpay_payment_id
-        booking.status = "CONFIRMED"
+        booking.status = "PENDING_APPROVAL"
         booking.save()
 
         for i in range(booking.number_of_tickets):
@@ -256,6 +274,18 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         booking.event.available_seats -= booking.number_of_tickets
         booking.event.save()
+
+        Notification.objects.create(
+            user=booking.user,
+            notification_type='BOOKING_CONFIRMED',
+            title='Booking Received',
+            message=(
+                f'Your payment for "{booking.event.title}" was successful. '
+                f'Your booking is pending organizer confirmation.'
+            ),
+            related_event=booking.event,
+            related_booking=booking,
+        )
 
         if booking.event.available_seats == 0:
             Notification.objects.create(
@@ -289,7 +319,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        if booking.status == "CANCELLED":
+        if booking.status in ("CANCELLED", "REJECTED"):
             return Response(
                 {"detail": "Booking is already cancelled"},
                 status=status.HTTP_400_BAD_REQUEST
@@ -315,8 +345,89 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         booking.status = "CANCELLED"
         booking.save()
-        
+
+        # Auto-assign the freed seat(s) to the next person(s) on the waitlist
+        assigned = assign_waitlist_seats(booking.event)
+
+        return Response({
+            'status': 'Booking cancelled',
+            'waitlist_assigned': len(assigned),
+        })
+
+    @action(detail=True, methods=['POST'])
+    def confirm(self, request, pk=None):
+        """Confirm a pending booking (organizer only)"""
+        booking = self.get_object()
+        if request.user.role != 'ORGANIZER' or booking.event.organizer != request.user:
+            return Response(
+                {"detail": "Only the event organizer can confirm bookings"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if booking.status != 'PENDING_APPROVAL':
+            return Response(
+                {"detail": "Only pending bookings can be confirmed"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        booking.status = 'CONFIRMED'
+        booking.save()
+
+        for ticket in booking.tickets.all():
+            if not ticket.qr_code:
+                ticket.generate_qr_code()
+
+        Notification.objects.create(
+            user=booking.user,
+            notification_type='BOOKING_CONFIRMED',
+            title='Booking Confirmed',
+            message=(
+                f'Your booking for "{booking.event.title}" '
+                f'({booking.booking_reference}) has been confirmed by the organizer. '
+                f'You can now download your tickets.'
+            ),
+            related_event=booking.event,
+            related_booking=booking,
+        )
+
         return Response(BookingSerializer(booking).data)
+
+    @action(detail=True, methods=['POST'])
+    def reject(self, request, pk=None):
+        """Reject a pending booking (organizer only)"""
+        booking = self.get_object()
+        if request.user.role != 'ORGANIZER' or booking.event.organizer != request.user:
+            return Response(
+                {"detail": "Only the event organizer can reject bookings"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if booking.status != 'PENDING_APPROVAL':
+            return Response(
+                {"detail": "Only pending bookings can be rejected"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        booking.status = 'REJECTED'
+        booking.save()
+
+        booking.event.available_seats += booking.number_of_tickets
+        booking.event.save()
+
+        Notification.objects.create(
+            user=booking.user,
+            notification_type='BOOKING_REJECTED',
+            title='Booking Not Confirmed',
+            message=(
+                f'We are sorry, your booking for "{booking.event.title}" '
+                f'({booking.booking_reference}) was not confirmed by the organizer.'
+            ),
+            related_event=booking.event,
+            related_booking=booking,
+        )
+
+        assigned = assign_waitlist_seats(booking.event)
+
+        return Response({
+            'status': 'Booking rejected',
+            'waitlist_assigned': len(assigned),
+        })
 
     @action(detail=True, methods=['GET'])
     def tickets(self, request, pk=None):
@@ -400,3 +511,98 @@ class BookingViewSet(viewsets.ModelViewSet):
             'confirmed_bookings': confirmed,
             'cancelled_bookings': cancelled
         })
+
+
+class WaitlistViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing event waitlists.
+
+    - Regular users can join/leave the waitlist for fully-booked events.
+    - Organizers can view the waitlist for their own events.
+    """
+    serializer_class = WaitlistEntrySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = WaitlistEntry.objects.all()
+        event_id = self.request.query_params.get('event_id')
+        if event_id:
+            qs = qs.filter(event_id=event_id)
+        if user.role == 'ORGANIZER':
+            return qs.filter(event__organizer=user)
+        if user.role == 'USER':
+            return qs.filter(user=user)
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        """Join the waitlist for a fully-booked event"""
+        if request.user.role != 'USER':
+            return Response(
+                {"detail": "Only regular users can join the waitlist"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        event_id = request.data.get('event')
+        if not event_id:
+            return Response(
+                {"detail": "event is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        event = get_object_or_404(Event, id=event_id)
+
+        blocked_reason = _check_booking_open(event)
+        if blocked_reason:
+            return Response(
+                {"detail": blocked_reason},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if event.available_seats > 0:
+            return Response(
+                {"detail": "Seats are still available. You can book directly."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        entry, created = WaitlistEntry.objects.get_or_create(
+            event=event,
+            user=request.user,
+            defaults={'status': 'WAITING'},
+        )
+        if not created and entry.status != 'WAITING':
+            entry.status = 'WAITING'
+            entry.save(update_fields=['status'])
+
+        entry.refresh_from_db()
+        Notification.objects.create(
+            user=request.user,
+            notification_type='WAITLIST_JOINED',
+            title='You are on the waitlist',
+            message=(
+                f'You joined the waitlist for "{event.title}". '
+                f'You will be notified automatically if a seat becomes available.'
+            ),
+            related_event=event,
+        )
+
+        serializer = self.get_serializer(entry)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['POST'])
+    def leave(self, request, pk=None):
+        """Remove yourself from the waitlist"""
+        entry = self.get_object()
+        if entry.user != request.user:
+            return Response(
+                {"detail": "You can only leave your own waitlist entry"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        entry.status = 'REMOVED'
+        entry.save(update_fields=['status'])
+        return Response({'status': 'Removed from waitlist'})
+
+    @action(detail=False, methods=['GET'])
+    def my_waitlist(self, request):
+        """Get current user's waitlist entries"""
+        entries = WaitlistEntry.objects.filter(user=request.user).order_by('-created_at')
+        serializer = self.get_serializer(entries, many=True)
+        return Response(serializer.data)

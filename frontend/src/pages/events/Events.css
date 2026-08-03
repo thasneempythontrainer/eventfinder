@@ -941,6 +941,74 @@
   font-weight: 600;
 }
 
+.sold-out .ended-sub {
+  font-size: 13px;
+  font-weight: 400;
+  color: #a31515;
+  margin-top: 6px;
+}
+
+.waitlist-count {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.waitlist-status {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed #e0b4b4;
+}
+
+.waitlist-status p {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.waitlist-status .ended-sub {
+  font-size: 12px;
+  color: #666;
+  margin: 4px 0 8px;
+}
+
+.booking-button.secondary {
+  background: #f5f5f5;
+  color: #a31515;
+  border: 1px solid #e0b4b4;
+}
+
+.booking-button.secondary:hover:not(:disabled) {
+  background: #fee;
+  box-shadow: none;
+}
+
+.amenities-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.amenity-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: #fff7f2;
+  border: 1px solid #f0d9cc;
+  border-radius: 20px;
+  font-size: 13px;
+  color: #7a3b1e;
+  font-weight: 500;
+}
+
 .event-ended-notice {
   padding: 20px;
   text-align: center;

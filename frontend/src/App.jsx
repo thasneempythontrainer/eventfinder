@@ -39,6 +39,7 @@ import OrganizerEvents from './pages/organizer/Events';
 import CreateEvent from './pages/organizer/CreateEvent';
 import EditEvent from './pages/organizer/EditEvent';
 import EventAnalytics from './pages/organizer/EventAnalytics';
+import EventBookings from './pages/organizer/EventBookings';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
@@ -125,6 +126,7 @@ const AppContent = () => {
             <Route path="/organizer/create-event" element={<CreateEvent />} />
             <Route path="/organizer/events/:id/edit" element={<EditEvent />} />
             <Route path="/organizer/events/:id/analytics" element={<EventAnalytics />} />
+            <Route path="/organizer/events/:id/bookings" element={<EventBookings />} />
             <Route path="/organizer/participant-requests" element={<OrganizerParticipantRequests />} />
             <Route path="/organizer/create-participant-request" element={<CreateParticipantRequest />} />
             <Route path="/organizer/analytics" element={<OrganizerAnalytics />} />

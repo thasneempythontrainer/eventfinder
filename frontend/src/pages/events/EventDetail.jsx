@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { eventAPI, bookingAPI, experienceAPI } from '../../services/api';
+import { eventAPI, bookingAPI, experienceAPI, waitlistAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import Chat from '../../components/chat/Chat';
 import {
   CalendarDays, MapPin, DollarSign, FileText, Star, AlertTriangle,
-  Ticket, ThumbsUp, Heart, Ban, Minus, Plus, MessageCircle, Send, Image, X
+  Ticket, ThumbsUp, Heart, Ban, Minus, Plus, MessageCircle, Send, Image, X,
+  SquareParking, Wifi, UtensilsCrossed, Droplets, DoorOpen, BatteryCharging,
+  Accessibility, Languages, Backpack, Award, Phone, Hourglass, CalendarClock,
+  ListChecks, Users, CheckCircle2, XCircle
 } from 'lucide-react';
 import './Events.css';
 
@@ -27,6 +30,7 @@ const EventDetail = () => {
   const [expImagePreview, setExpImagePreview] = useState([]);
   const [expSubmitting, setExpSubmitting] = useState(false);
   const [showExpForm, setShowExpForm] = useState(false);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
 
   useEffect(() => {
     fetchEventDetail();
@@ -197,6 +201,57 @@ const EventDetail = () => {
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to create payment order');
       setBookingLoading(false);
+    }
+  };
+
+  const handleJoinWaitlist = async () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    if (user?.role !== 'USER') {
+      setError('Only regular users can join the waitlist');
+      return;
+    }
+    setWaitlistLoading(true);
+    setError('');
+    try {
+      await waitlistAPI.join(event.id);
+      alert('You have joined the waitlist. You will be notified automatically if a seat becomes available.');
+      fetchEventDetail();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to join waitlist');
+    } finally {
+      setWaitlistLoading(false);
+    }
+  };
+
+  const handleLeaveWaitlist = async (entryId) => {
+    if (!window.confirm('Leave the waitlist for this event?')) return;
+    setWaitlistLoading(true);
+    try {
+      await waitlistAPI.leave(entryId);
+      fetchEventDetail();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to leave waitlist');
+    } finally {
+      setWaitlistLoading(false);
+    }
+  };
+
+  const handleDownloadCertificate = async () => {
+    try {
+      const response = await eventAPI.downloadCertificate(event.id);
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `certificate_${event.id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to download certificate');
     }
   };
 
@@ -404,6 +459,65 @@ const EventDetail = () => {
                   <p>{event.description}</p>
                 </div>
 
+                {event.language && (
+                  <div className="detail-section">
+                    <h3><Languages size={18} /> Language</h3>
+                    <p>{event.language}</p>
+                  </div>
+                )}
+
+                {event.what_to_bring && (
+                  <div className="detail-section">
+                    <h3><Backpack size={18} /> What to Bring</h3>
+                    <p style={{ whiteSpace: 'pre-wrap' }}>{event.what_to_bring}</p>
+                  </div>
+                )}
+
+                {event.booking_deadline && (
+                  <div className="detail-section">
+                    <h3><Hourglass size={18} /> Registration Deadline</h3>
+                    <p>
+                      {new Date(event.booking_deadline).toLocaleString('en-US', {
+                        month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                )}
+
+                {(event.parking_available || event.wifi_available || event.food_available ||
+                  event.water_refill_stations || event.restrooms_available || event.charging_stations ||
+                  event.wheelchair_accessible || event.prayer_room) && (
+                  <div className="detail-section">
+                    <h3><ListChecks size={18} /> Amenities & Facilities</h3>
+                    <div className="amenities-list">
+                      {event.parking_available && (
+                        <span className="amenity-chip"><SquareParking size={15} /> Parking{event.parking_details ? ` — ${event.parking_details}` : ''}</span>
+                      )}
+                      {event.wifi_available && (
+                        <span className="amenity-chip"><Wifi size={15} /> Wi-Fi{event.wifi_details ? ` — ${event.wifi_details}` : ''}</span>
+                      )}
+                      {event.food_available && (
+                        <span className="amenity-chip"><UtensilsCrossed size={15} /> Food & Refreshments{event.food_details ? ` — ${event.food_details}` : ''}</span>
+                      )}
+                      {event.water_refill_stations && (
+                        <span className="amenity-chip"><Droplets size={15} /> Water Refill Stations</span>
+                      )}
+                      {event.restrooms_available && (
+                        <span className="amenity-chip"><DoorOpen size={15} /> Restrooms</span>
+                      )}
+                      {event.charging_stations && (
+                        <span className="amenity-chip"><BatteryCharging size={15} /> Charging Stations</span>
+                      )}
+                      {event.wheelchair_accessible && (
+                        <span className="amenity-chip"><Accessibility size={15} /> Wheelchair Accessible</span>
+                      )}
+                      {event.prayer_room && (
+                        <span className="amenity-chip"><Accessibility size={15} /> Prayer Room</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {event.category_name && (
                   <div className="detail-section">
                     <h3>Category</h3>
@@ -431,7 +545,23 @@ const EventDetail = () => {
                       </span>
                     )}
                   </p>
+                  <p style={{ marginTop: '6px' }}>
+                    <Phone size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                    <a href={`mailto:${event.organizer_email}`}>{event.organizer_email}</a>
+                    {event.organizer_phone && (
+                      <span style={{ marginLeft: '16px', color: '#666' }}>{event.organizer_phone}</span>
+                    )}
+                  </p>
                 </div>
+
+                {event.certificate_available && event.has_confirmed_booking && (
+                  <div className="detail-section">
+                    <h3><Award size={18} /> Certificate</h3>
+                    <button className="booking-button" style={{ marginTop: '8px' }} onClick={handleDownloadCertificate}>
+                      <Award size={16} /> Download Certificate
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -635,13 +765,18 @@ const EventDetail = () => {
               <span className="price-value">₹{event.ticket_price}</span>
             </div>
 
-            {(event.status === 'COMPLETED' || event.status === 'CANCELLED' || event.status === 'PENDING') ? (
+            {(event.status === 'COMPLETED' || event.status === 'CANCELLED' || event.status === 'PENDING' || event.status === 'POSTPONED') ? (
               <div className="event-ended-notice">
                 <Ban size={20} />
                 {event.status === 'PENDING' ? (
                   <>
                     <p><strong>Awaiting Approval</strong></p>
                     <p className="ended-sub">This event is pending admin approval and not yet available for booking.</p>
+                  </>
+                ) : event.status === 'POSTPONED' ? (
+                  <>
+                    <p><strong>Postponed</strong></p>
+                    <p className="ended-sub">This event has been postponed. A new date and time will be announced by the organizer. Existing bookings remain valid.</p>
                   </>
                 ) : (
                   <>
@@ -654,6 +789,11 @@ const EventDetail = () => {
               <>
                 <div className="booking-info">
                   <p className="seats-info">{availableSeats} seats available</p>
+                  {event.booking_deadline && new Date(event.booking_deadline) < new Date() && (
+                    <p className="deadline-passed" style={{ color: '#e74c3c', fontSize: '13px', marginTop: '6px' }}>
+                      <Hourglass size={13} /> Registration deadline has passed
+                    </p>
+                  )}
                 </div>
 
                 <div className="ticket-selector">
@@ -699,7 +839,7 @@ const EventDetail = () => {
                 <button
                   className="booking-button"
                   onClick={handleBooking}
-                  disabled={bookingLoading}
+                  disabled={bookingLoading || (event.booking_deadline && new Date(event.booking_deadline) < new Date())}
                 >
                   {bookingLoading ? 'Processing...' : isAuthenticated ? (event.ticket_price > 0 ? 'Pay Now' : 'Book Now') : 'Login to Book'}
                 </button>
@@ -707,7 +847,36 @@ const EventDetail = () => {
             ) : (
               <div className="sold-out">
                 <p><Ban size={16} /> This event is FULLY BOOKED</p>
-                <p className="ended-sub">All seats have been reserved. Check back later in case seats become available.</p>
+                <p className="ended-sub">
+                  All seats have been reserved. Join the waitlist — you will be automatically assigned a ticket if a booked attendee cancels.
+                </p>
+                {event.waitlist_count > 0 && (
+                  <p className="waitlist-count"><Users size={14} /> {event.waitlist_count} on waitlist</p>
+                )}
+                {event.user_waitlist_status ? (
+                  <div className="waitlist-status">
+                    <p><CheckCircle2 size={16} color="#2d8b4e" /> You are on the waitlist</p>
+                    {event.user_waitlist_status.position > 0 && (
+                      <p className="ended-sub">Your position: #{event.user_waitlist_status.position}</p>
+                    )}
+                    <button
+                      className="booking-button secondary"
+                      onClick={() => handleLeaveWaitlist(event.user_waitlist_status.id)}
+                      disabled={waitlistLoading}
+                    >
+                      <XCircle size={16} /> Leave Waitlist
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="booking-button"
+                    onClick={handleJoinWaitlist}
+                    disabled={waitlistLoading}
+                    style={{ marginTop: '12px' }}
+                  >
+                    {waitlistLoading ? 'Joining...' : <><Users size={16} /> Join Waitlist</>}
+                  </button>
+                )}
               </div>
             )}
 

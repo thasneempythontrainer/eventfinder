@@ -111,6 +111,48 @@
   margin-bottom: 0;
 }
 
+/* Form hints */
+.form-hint {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-top: 6px;
+}
+
+/* Amenities grid */
+.amenities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.amenity-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.amenity-toggle:hover {
+  border-color: #e8622c;
+  background: #fff7f2;
+}
+
+.amenity-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #e8622c;
+  cursor: pointer;
+}
+
 /* File Input */
 .file-input-wrapper {
   position: relative;

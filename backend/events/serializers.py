@@ -51,6 +51,11 @@ class EventSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    organizer_phone = serializers.CharField(
+        source="organizer.phone_number",
+        read_only=True,
+    )
+
     gallery = EventImageSerializer(
         many=True,
         read_only=True,
@@ -64,19 +69,25 @@ class EventSerializer(serializers.ModelSerializer):
 
     booking_count = serializers.SerializerMethodField()
     is_fully_booked = serializers.SerializerMethodField()
+    waitlist_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
 
         fields = [
             'id', 'organizer', 'organizer_name', 'organizer_email',
-            'organizer_first_name', 'organizer_last_name',
+            'organizer_first_name', 'organizer_last_name', 'organizer_phone',
             'category', 'category_name', 'title', 'description',
             'venue', 'city',
             'latitude', 'longitude', 'start_date', 'end_date', 'start_time',
             'end_time', 'banner', 'ticket_price', 'total_seats', 'available_seats',
+            'booking_deadline', 'language', 'what_to_bring',
+            'parking_available', 'parking_details', 'wifi_available', 'wifi_details',
+            'food_available', 'food_details', 'water_refill_stations',
+            'restrooms_available', 'charging_stations', 'wheelchair_accessible',
+            'prayer_room', 'certificate_available',
             'status', 'gallery', 'images', 'booking_count', 'is_fully_booked',
-            'created_at', 'updated_at'
+            'waitlist_count', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'available_seats']
 
@@ -85,6 +96,9 @@ class EventSerializer(serializers.ModelSerializer):
 
     def get_is_fully_booked(self, obj):
         return obj.available_seats == 0
+
+    def get_waitlist_count(self, obj):
+        return obj.waitlist_entries.filter(status='WAITING').count()
 
 
 class EventCreateSerializer(serializers.ModelSerializer):
@@ -95,7 +109,12 @@ class EventCreateSerializer(serializers.ModelSerializer):
         fields = [
             'category', 'title', 'description', 'venue', 'city',
             'latitude', 'longitude', 'start_date', 'end_date', 'start_time',
-            'end_time', 'banner', 'ticket_price', 'total_seats'
+            'end_time', 'banner', 'ticket_price', 'total_seats',
+            'booking_deadline', 'language', 'what_to_bring',
+            'parking_available', 'parking_details', 'wifi_available', 'wifi_details',
+            'food_available', 'food_details', 'water_refill_stations',
+            'restrooms_available', 'charging_stations', 'wheelchair_accessible',
+            'prayer_room', 'certificate_available', 'certificate_template',
         ]
 
     def create(self, validated_data):
@@ -103,6 +122,30 @@ class EventCreateSerializer(serializers.ModelSerializer):
         validated_data['available_seats'] = validated_data['total_seats']
         validated_data['status'] = 'PENDING'
         return super().create(validated_data)
+
+    def validate(self, attrs):
+        start_date = attrs.get('start_date')
+        end_date = attrs.get('end_date')
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError("End date cannot be before start date.")
+        deadline = attrs.get('booking_deadline')
+        if deadline:
+            import datetime
+            from django.utils import timezone
+            naive = deadline
+            if timezone.is_naive(deadline):
+                naive = timezone.make_aware(deadline)
+            start_dt = datetime.datetime.combine(
+                start_date,
+                attrs.get('start_time') or datetime.time.min,
+            )
+            if timezone.is_naive(start_dt):
+                start_dt = timezone.make_aware(start_dt)
+            if naive >= start_dt:
+                raise serializers.ValidationError(
+                    "Booking deadline must be before the event start time."
+                )
+        return attrs
 
 
 class EventUpdateSerializer(serializers.ModelSerializer):
@@ -113,7 +156,12 @@ class EventUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'title', 'description', 'category', 'venue', 'city', 'latitude', 'longitude',
             'start_date', 'end_date', 'start_time', 'end_time', 'banner',
-            'ticket_price', 'total_seats', 'status'
+            'ticket_price', 'total_seats', 'status',
+            'booking_deadline', 'language', 'what_to_bring',
+            'parking_available', 'parking_details', 'wifi_available', 'wifi_details',
+            'food_available', 'food_details', 'water_refill_stations',
+            'restrooms_available', 'charging_stations', 'wheelchair_accessible',
+            'prayer_room', 'certificate_available', 'certificate_template',
         ]
 
 
@@ -145,6 +193,11 @@ class EventDetailSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    organizer_phone = serializers.CharField(
+        source="organizer.phone_number",
+        read_only=True,
+    )
+
     organizer_profile_picture = serializers.SerializerMethodField()
 
     gallery = EventImageSerializer(many=True, read_only=True)
@@ -152,22 +205,59 @@ class EventDetailSerializer(serializers.ModelSerializer):
     booking_count = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
     is_fully_booked = serializers.SerializerMethodField()
+    waitlist_count = serializers.SerializerMethodField()
+    user_waitlist_status = serializers.SerializerMethodField()
+    has_confirmed_booking = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
         fields = [
             'id', 'organizer', 'organizer_name', 'organizer_first_name',
-            'organizer_last_name', 'organizer_email',
+            'organizer_last_name', 'organizer_email', 'organizer_phone',
             'organizer_profile_picture',
             'category', 'category_name', 'title', 'description', 'venue',
             'city', 'latitude', 'longitude', 'start_date', 'end_date',
             'start_time', 'end_time', 'banner', 'ticket_price', 'total_seats',
-            'available_seats', 'status', 'gallery', 'images', 'booking_count',
-            'average_rating', 'is_fully_booked', 'created_at', 'updated_at'
+            'available_seats', 'booking_deadline', 'language', 'what_to_bring',
+            'parking_available', 'parking_details', 'wifi_available', 'wifi_details',
+            'food_available', 'food_details', 'water_refill_stations',
+            'restrooms_available', 'charging_stations', 'wheelchair_accessible',
+            'prayer_room', 'certificate_available',
+            'status', 'gallery', 'images', 'booking_count',
+            'average_rating', 'is_fully_booked', 'waitlist_count',
+            'user_waitlist_status', 'has_confirmed_booking',
+            'created_at', 'updated_at'
         ]
 
     def get_is_fully_booked(self, obj):
         return obj.available_seats == 0
+
+    def get_waitlist_count(self, obj):
+        return obj.waitlist_entries.filter(status='WAITING').count()
+
+    def get_user_waitlist_status(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            entry = obj.waitlist_entries.filter(
+                user=request.user
+            ).first()
+            if entry:
+                return {
+                    'id': entry.id,
+                    'status': entry.status,
+                    'position': entry.position,
+                }
+        return None
+
+    def get_has_confirmed_booking(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            from bookings.models import Booking
+            return obj.bookings.filter(
+                user=request.user,
+                status__in=('CONFIRMED', 'PENDING_APPROVAL'),
+            ).exists()
+        return False
 
     def get_organizer_profile_picture(self, obj):
         if obj.organizer.profile_picture:

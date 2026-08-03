@@ -21,9 +21,26 @@ const EditEvent = () => {
     ticket_price: '',
     total_tickets: '',
     banner: null,
+    booking_deadline: '',
+    language: '',
+    what_to_bring: '',
+    parking_available: false,
+    parking_details: '',
+    wifi_available: false,
+    wifi_details: '',
+    food_available: false,
+    food_details: '',
+    water_refill_stations: false,
+    restrooms_available: false,
+    charging_stations: false,
+    wheelchair_accessible: false,
+    prayer_room: false,
+    certificate_available: false,
+    certificate_template: null,
   });
   const [existingBanner, setExistingBanner] = useState(null);
   const [imagePreview, setImagePreview] = useState([]);
+  const [certificateName, setCertificateName] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -58,6 +75,22 @@ const EditEvent = () => {
         ticket_price: event.ticket_price || '',
         total_tickets: event.total_seats || event.total_tickets || '',
         banner: null,
+        booking_deadline: event.booking_deadline ? event.booking_deadline.slice(0, 16) : '',
+        language: event.language || '',
+        what_to_bring: event.what_to_bring || '',
+        parking_available: !!event.parking_available,
+        parking_details: event.parking_details || '',
+        wifi_available: !!event.wifi_available,
+        wifi_details: event.wifi_details || '',
+        food_available: !!event.food_available,
+        food_details: event.food_details || '',
+        water_refill_stations: !!event.water_refill_stations,
+        restrooms_available: !!event.restrooms_available,
+        charging_stations: !!event.charging_stations,
+        wheelchair_accessible: !!event.wheelchair_accessible,
+        prayer_room: !!event.prayer_room,
+        certificate_available: !!event.certificate_available,
+        certificate_template: null,
       });
 
       if (event.banner) {
@@ -82,8 +115,20 @@ const EditEvent = () => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const handleCertificateSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Certificate template must be less than 10MB');
+      return;
+    }
+    setFormData(prev => ({ ...prev, certificate_template: file }));
+    setCertificateName(file.name);
+    e.target.value = '';
   };
 
   const handleImageSelect = (e) => {
@@ -148,6 +193,27 @@ const EditEvent = () => {
       formDataToSend.append('city', formData.city);
       formDataToSend.append('ticket_price', formData.ticket_price);
       formDataToSend.append('total_seats', formData.total_tickets);
+      formDataToSend.append('language', formData.language);
+      formDataToSend.append('what_to_bring', formData.what_to_bring);
+
+      if (formData.booking_deadline) {
+        formDataToSend.append('booking_deadline', formData.booking_deadline);
+      }
+
+      const booleans = [
+        'parking_available', 'wifi_available', 'food_available',
+        'water_refill_stations', 'restrooms_available', 'charging_stations',
+        'wheelchair_accessible', 'prayer_room', 'certificate_available'
+      ];
+      booleans.forEach(key => formDataToSend.append(key, formData[key] ? 'true' : 'false'));
+
+      formDataToSend.append('parking_details', formData.parking_details);
+      formDataToSend.append('wifi_details', formData.wifi_details);
+      formDataToSend.append('food_details', formData.food_details);
+
+      if (formData.certificate_template) {
+        formDataToSend.append('certificate_template', formData.certificate_template);
+      }
 
       if (formData.banner) {
         formDataToSend.append('banner', formData.banner);
@@ -297,6 +363,49 @@ const EditEvent = () => {
                   />
                 </div>
               </div>
+
+              <div className="form-group">
+                <label htmlFor="booking_deadline">Booking Deadline (optional)</label>
+                <input
+                  type="datetime-local"
+                  id="booking_deadline"
+                  name="booking_deadline"
+                  value={formData.booking_deadline}
+                  onChange={handleInputChange}
+                  disabled={saving}
+                />
+                <small className="form-hint">Registration closes at this date/time. Leave blank for no deadline.</small>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <h3><FileText size={18} /> Language & Requirements</h3>
+
+              <div className="form-group">
+                <label htmlFor="language">Event Language (optional)</label>
+                <input
+                  type="text"
+                  id="language"
+                  name="language"
+                  value={formData.language}
+                  onChange={handleInputChange}
+                  placeholder="e.g. English, Arabic"
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="what_to_bring">What to Bring (optional)</label>
+                <textarea
+                  id="what_to_bring"
+                  name="what_to_bring"
+                  value={formData.what_to_bring}
+                  onChange={handleInputChange}
+                  placeholder="Items participants should bring (e.g. student ID, laptop)"
+                  rows="3"
+                  disabled={saving}
+                />
+              </div>
             </div>
 
             <div className="form-section">
@@ -327,6 +436,173 @@ const EditEvent = () => {
                   disabled={saving}
                 />
               </div>
+            </div>
+
+            <div className="form-section">
+              <h3><MapPin size={18} /> Amenities & Facilities</h3>
+              <p className="form-hint">Tick the facilities available at this event. All optional.</p>
+
+              <div className="amenities-grid">
+                <label className="amenity-toggle">
+                  <input
+                    type="checkbox"
+                    name="parking_available"
+                    checked={formData.parking_available}
+                    onChange={handleInputChange}
+                    disabled={saving}
+                  />
+                  <span>Parking Available</span>
+                </label>
+                <label className="amenity-toggle">
+                  <input
+                    type="checkbox"
+                    name="wifi_available"
+                    checked={formData.wifi_available}
+                    onChange={handleInputChange}
+                    disabled={saving}
+                  />
+                  <span>Wi-Fi</span>
+                </label>
+                <label className="amenity-toggle">
+                  <input
+                    type="checkbox"
+                    name="food_available"
+                    checked={formData.food_available}
+                    onChange={handleInputChange}
+                    disabled={saving}
+                  />
+                  <span>Food & Refreshments</span>
+                </label>
+                <label className="amenity-toggle">
+                  <input
+                    type="checkbox"
+                    name="water_refill_stations"
+                    checked={formData.water_refill_stations}
+                    onChange={handleInputChange}
+                    disabled={saving}
+                  />
+                  <span>Water Refill Stations</span>
+                </label>
+                <label className="amenity-toggle">
+                  <input
+                    type="checkbox"
+                    name="restrooms_available"
+                    checked={formData.restrooms_available}
+                    onChange={handleInputChange}
+                    disabled={saving}
+                  />
+                  <span>Restrooms</span>
+                </label>
+                <label className="amenity-toggle">
+                  <input
+                    type="checkbox"
+                    name="charging_stations"
+                    checked={formData.charging_stations}
+                    onChange={handleInputChange}
+                    disabled={saving}
+                  />
+                  <span>Charging Stations</span>
+                </label>
+                <label className="amenity-toggle">
+                  <input
+                    type="checkbox"
+                    name="wheelchair_accessible"
+                    checked={formData.wheelchair_accessible}
+                    onChange={handleInputChange}
+                    disabled={saving}
+                  />
+                  <span>Wheelchair Accessible</span>
+                </label>
+                <label className="amenity-toggle">
+                  <input
+                    type="checkbox"
+                    name="prayer_room"
+                    checked={formData.prayer_room}
+                    onChange={handleInputChange}
+                    disabled={saving}
+                  />
+                  <span>Prayer Room</span>
+                </label>
+              </div>
+
+              {formData.parking_available && (
+                <div className="form-group" style={{ marginTop: '12px' }}>
+                  <label htmlFor="parking_details">Parking Details</label>
+                  <input
+                    type="text"
+                    id="parking_details"
+                    name="parking_details"
+                    value={formData.parking_details}
+                    onChange={handleInputChange}
+                    placeholder="e.g. Free parking lot on site"
+                    disabled={saving}
+                  />
+                </div>
+              )}
+              {formData.wifi_available && (
+                <div className="form-group" style={{ marginTop: '12px' }}>
+                  <label htmlFor="wifi_details">Wi-Fi Details</label>
+                  <input
+                    type="text"
+                    id="wifi_details"
+                    name="wifi_details"
+                    value={formData.wifi_details}
+                    onChange={handleInputChange}
+                    placeholder="e.g. Network: EventNet, Password: 1234"
+                    disabled={saving}
+                  />
+                </div>
+              )}
+              {formData.food_available && (
+                <div className="form-group" style={{ marginTop: '12px' }}>
+                  <label htmlFor="food_details">Food & Refreshments Details</label>
+                  <input
+                    type="text"
+                    id="food_details"
+                    name="food_details"
+                    value={formData.food_details}
+                    onChange={handleInputChange}
+                    placeholder="e.g. Lunch and coffee breaks included"
+                    disabled={saving}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="form-section">
+              <h3><FileText size={18} /> Certificate</h3>
+
+              <label className="amenity-toggle">
+                <input
+                  type="checkbox"
+                  name="certificate_available"
+                  checked={formData.certificate_available}
+                  onChange={handleInputChange}
+                  disabled={saving}
+                />
+                <span>Offer participation certificates to attendees</span>
+              </label>
+
+              {formData.certificate_available && (
+                <div className="form-group" style={{ marginTop: '12px' }}>
+                  <label htmlFor="certificate_template">Certificate Template (optional image)</label>
+                  <div className="file-input-wrapper">
+                    <input
+                      type="file"
+                      id="certificate_template"
+                      accept="image/png,image/jpeg"
+                      onChange={handleCertificateSelect}
+                      disabled={saving}
+                    />
+                    <label htmlFor="certificate_template" className="file-input-label">
+                      <Camera size={16} /> {certificateName || 'Choose Template (PNG/JPG, max 10MB)'}
+                    </label>
+                  </div>
+                  <small className="form-hint">
+                    If none is uploaded, a branded EventFinder certificate is generated automatically.
+                  </small>
+                </div>
+              )}
             </div>
 
             <div className="form-section">

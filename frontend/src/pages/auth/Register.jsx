@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import {
+  User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, AlertCircle, CheckCircle2,
+} from 'lucide-react';
+import AuthLayout from './AuthLayout';
 import './Auth.css';
 
 const Register = () => {
@@ -12,6 +16,8 @@ const Register = () => {
     password: '',
     password_confirm: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,7 +38,6 @@ const Register = () => {
     setSuccess('');
     setLoading(true);
 
-    // Validation
     if (!formData.first_name || !formData.last_name || !formData.email || !formData.password) {
       setError('Please fill in all required fields');
       setLoading(false);
@@ -81,18 +86,29 @@ const Register = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-form-container">
-        <div className="auth-form">
-          <h2>Create Account</h2>
-          <p className="auth-subtitle">Join EventFinder and discover amazing events</p>
+    <AuthLayout>
+      <div className="auth-heading">
+        <h2>Create Account</h2>
+        <p>Join EventFinder and discover amazing events</p>
+      </div>
 
-          {error && <div className="alert alert-danger">{error}</div>}
-          {success && <div className="alert alert-success">{success}</div>}
+      {error && (
+        <div className="alert alert-danger">
+          <AlertCircle size={16} /> {error}
+        </div>
+      )}
+      {success && (
+        <div className="alert alert-success">
+          <CheckCircle2 size={16} /> {success}
+        </div>
+      )}
 
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="first_name">First Name *</label>
+      <form onSubmit={handleSubmit}>
+        <div className="form-row">
+          <div className="input-group">
+            <label htmlFor="first_name">First Name *</label>
+            <div className="input-wrap">
+              <User size={18} className="input-icon" />
               <input
                 type="text"
                 id="first_name"
@@ -103,9 +119,12 @@ const Register = () => {
                 required
               />
             </div>
+          </div>
 
-            <div className="form-group">
-              <label htmlFor="last_name">Last Name *</label>
+          <div className="input-group">
+            <label htmlFor="last_name">Last Name *</label>
+            <div className="input-wrap">
+              <User size={18} className="input-icon" />
               <input
                 type="text"
                 id="last_name"
@@ -116,75 +135,100 @@ const Register = () => {
                 required
               />
             </div>
-
-            <div className="form-group">
-              <label htmlFor="email">Email Address *</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="john@example.com"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="phone_number">Phone Number (Optional)</label>
-              <input
-                type="tel"
-                id="phone_number"
-                name="phone_number"
-                value={formData.phone_number}
-                onChange={handleChange}
-                placeholder="+1234567890"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="password">Password *</label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-                required
-              />
-              <small className="help-text">Minimum 8 characters</small>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="password_confirm">Confirm Password *</label>
-              <input
-                type="password"
-                id="password_confirm"
-                name="password_confirm"
-                value={formData.password_confirm}
-                onChange={handleChange}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-
-            <button type="submit" className="auth-button" disabled={loading}>
-              {loading ? 'Creating Account...' : 'Create Account'}
-            </button>
-          </form>
-
-          <div className="auth-footer">
-            <p>
-              Already have an account? <Link to="/login">Sign in here</Link>
-            </p>
-            <p>
-              Looking to create events? <Link to="/register-organizer">Register as Organizer</Link>
-            </p>
           </div>
         </div>
-      </div>
-    </div>
+
+        <div className="input-group">
+          <label htmlFor="email">Email Address *</label>
+          <div className="input-wrap">
+            <Mail size={18} className="input-icon" />
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="john@example.com"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="input-group">
+          <label htmlFor="phone_number">Phone Number (Optional)</label>
+          <div className="input-wrap">
+            <Phone size={18} className="input-icon" />
+            <input
+              type="tel"
+              id="phone_number"
+              name="phone_number"
+              value={formData.phone_number}
+              onChange={handleChange}
+              placeholder="+1234567890"
+            />
+          </div>
+        </div>
+
+        <div className="input-group">
+          <label htmlFor="password">Password *</label>
+          <div className="input-wrap">
+            <Lock size={18} className="input-icon" />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Minimum 8 characters"
+              required
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowPassword(s => !s)}
+              aria-label="Toggle password visibility"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </div>
+
+        <div className="input-group">
+          <label htmlFor="password_confirm">Confirm Password *</label>
+          <div className="input-wrap">
+            <Lock size={18} className="input-icon" />
+            <input
+              type={showConfirm ? 'text' : 'password'}
+              id="password_confirm"
+              name="password_confirm"
+              value={formData.password_confirm}
+              onChange={handleChange}
+              placeholder="Re-enter your password"
+              required
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowConfirm(s => !s)}
+              aria-label="Toggle password visibility"
+            >
+              {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </div>
+
+        <div className="auth-actions">
+          <button type="submit" className="auth-button" disabled={loading}>
+            {loading ? 'Creating Account...' : (
+              <>
+                <span>Create Account</span>
+                <ArrowRight size={18} />
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+    </AuthLayout>
   );
 };
 

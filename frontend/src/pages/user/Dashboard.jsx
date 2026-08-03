@@ -181,7 +181,9 @@ const BookingItem = ({ booking }) => {
     switch(status) {
       case 'CONFIRMED': return 'status-confirmed';
       case 'PENDING': return 'status-pending';
+      case 'PENDING_APPROVAL': return 'status-pending';
       case 'CANCELLED': return 'status-cancelled';
+      case 'REJECTED': return 'status-cancelled';
       default: return '';
     }
   };

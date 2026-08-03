@@ -25,6 +25,7 @@ class Event(models.Model):
     STATUS_CHOICES = (
         ("PENDING", "Pending Approval"),
         ("UPCOMING", "Upcoming"),
+        ("POSTPONED", "Postponed"),
         ("ONGOING", "Ongoing"),
         ("COMPLETED", "Completed"),
         ("CANCELLED", "Cancelled"),
@@ -84,6 +85,71 @@ class Event(models.Model):
     total_seats = models.PositiveIntegerField()
 
     available_seats = models.PositiveIntegerField()
+
+    booking_deadline = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Last date/time to register. Leave blank for no deadline.",
+    )
+
+    language = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Language(s) the event is conducted in, e.g. 'English, Arabic'",
+    )
+
+    what_to_bring = models.TextField(
+        blank=True,
+        default="",
+        help_text="Items participants should bring (e.g. student ID, laptop).",
+    )
+
+    parking_available = models.BooleanField(default=False)
+    parking_details = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Optional notes about parking (e.g. free lot nearby, paid garage).",
+    )
+
+    wifi_available = models.BooleanField(default=False)
+    wifi_details = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Optional Wi-Fi info (e.g. network name / password).",
+    )
+
+    food_available = models.BooleanField(default=False)
+    food_details = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Optional info about food and refreshments.",
+    )
+
+    water_refill_stations = models.BooleanField(default=False)
+
+    restrooms_available = models.BooleanField(default=False)
+
+    charging_stations = models.BooleanField(default=False)
+
+    wheelchair_accessible = models.BooleanField(default=False)
+
+    prayer_room = models.BooleanField(default=False)
+
+    certificate_available = models.BooleanField(
+        default=False,
+        help_text="Whether attendees can download a certificate of participation.",
+    )
+
+    certificate_template = models.FileField(
+        upload_to="certificate_templates/",
+        null=True,
+        blank=True,
+        help_text="Optional background template (image/PDF) used for certificates.",
+    )
 
     status = models.CharField(
         max_length=20,

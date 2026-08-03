@@ -106,6 +106,12 @@ export const eventAPI = {
   rejectEvent: (id) => api.post(`/events/${id}/reject_event/`),
   analytics: (id) => api.get(`/events/${id}/analytics/`),
   organizerAnalytics: () => api.get('/events/organizer_analytics/'),
+  startEvent: (id) => api.post(`/events/${id}/start_event/`),
+  endEvent: (id) => api.post(`/events/${id}/end_event/`),
+  cancelEvent: (id) => api.post(`/events/${id}/cancel_event/`),
+  postponeEvent: (id) => api.post(`/events/${id}/postpone_event/`),
+  participantsPdf: (id) => api.get(`/events/${id}/participants_pdf/`, { responseType: 'blob' }),
+  downloadCertificate: (id) => api.get(`/events/${id}/download_certificate/`, { responseType: 'blob' }),
 };
 
 // Booking APIs
@@ -120,6 +126,17 @@ export const bookingAPI = {
   statistics: () => api.get('/bookings/statistics/'),
   createOrder: (data) => api.post('/bookings/create_order/', data),
   verifyPayment: (data) => api.post('/bookings/verify_payment/', data),
+  confirm: (id) => api.post(`/bookings/${id}/confirm/`),
+  reject: (id) => api.post(`/bookings/${id}/reject/`),
+  eventBookings: (params = {}) => api.get('/bookings/event_bookings/', { params }),
+};
+
+// Waitlist APIs
+export const waitlistAPI = {
+  list: (params = {}) => api.get('/waitlist/', { params }),
+  join: (eventId) => api.post('/waitlist/', { event: eventId }),
+  leave: (id) => api.post(`/waitlist/${id}/leave/`),
+  myWaitlist: () => api.get('/waitlist/my_waitlist/'),
 };
 
 // Chat APIs

@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { eventAPI } from '../../services/api';
-import { Clock, Calendar, MapPin, Edit3, Trash2, Plus, Eye, Ticket as TicketIcon } from 'lucide-react';
+import {
+  Clock, Calendar, MapPin, Edit3, Trash2, Plus, Eye, Ticket as TicketIcon,
+  Play, StopCircle, Ban, CalendarClock, FileDown, Users
+} from 'lucide-react';
 import '../user/Dashboard.css';
 
 const OrganizerEvents = () => {
@@ -41,11 +44,68 @@ const OrganizerEvents = () => {
     const map = {
       PENDING: { bg: '#fff3cd', color: '#856404', label: 'Awaiting Approval' },
       UPCOMING: { bg: '#d4edda', color: '#155724', label: 'Upcoming' },
+      POSTPONED: { bg: '#fce4ec', color: '#880e4f', label: 'Postponed' },
       ONGOING: { bg: '#cfe2ff', color: '#084298', label: 'Ongoing' },
       COMPLETED: { bg: '#e2e3e5', color: '#383d41', label: 'Completed' },
       CANCELLED: { bg: '#f8d7da', color: '#721c24', label: 'Cancelled' },
     };
     return map[status] || { bg: '#e2e3e5', color: '#383d41', label: status };
+  };
+
+  const handleStart = async (eventId, title) => {
+    if (!window.confirm(`Mark "${title}" as ongoing?`)) return;
+    try {
+      await eventAPI.startEvent(eventId);
+      fetchEvents();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to start event');
+    }
+  };
+
+  const handleEnd = async (eventId, title) => {
+    if (!window.confirm(`Stop "${title}" now? This ends the event immediately.`)) return;
+    try {
+      await eventAPI.endEvent(eventId);
+      fetchEvents();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to end event');
+    }
+  };
+
+  const handleCancel = async (eventId, title) => {
+    if (!window.confirm(`Cancel "${title}"? All booked attendees will be notified.`)) return;
+    try {
+      await eventAPI.cancelEvent(eventId);
+      fetchEvents();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to cancel event');
+    }
+  };
+
+  const handlePostpone = async (eventId, title) => {
+    if (!window.confirm(`Postpone "${title}"? Attendees will be notified and you can update the date/time after.`)) return;
+    try {
+      await eventAPI.postponeEvent(eventId);
+      fetchEvents();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to postpone event');
+    }
+  };
+
+  const handleDownloadParticipants = async (eventId) => {
+    try {
+      const response = await eventAPI.participantsPdf(eventId);
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `participants_${eventId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to download participant list');
+    }
   };
 
   if (loading) {
@@ -120,7 +180,7 @@ const OrganizerEvents = () => {
                         Waiting for admin approval
                       </div>
                     )}
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px', borderTop: '1px solid #eee', paddingTop: '12px' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px', borderTop: '1px solid #eee', paddingTop: '12px', flexWrap: 'wrap' }}>
                       <button
                         onClick={() => navigate(`/events/${event.id}`)}
                         style={{
@@ -131,16 +191,87 @@ const OrganizerEvents = () => {
                       >
                         <Eye size={14} /> View
                       </button>
+                      <button
+                        onClick={() => navigate(`/organizer/events/${event.id}/bookings`)}
+                        style={{
+                          flex: 1, padding: '8px', background: '#e8f4fd', border: 'none',
+                          borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+                          color: '#e8622c', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                        }}
+                        title="Manage bookings & waitlist"
+                      >
+                        <Users size={14} /> Bookings
+                      </button>
+                      <button
+                        onClick={() => handleDownloadParticipants(event.id)}
+                        style={{
+                          padding: '8px 12px', background: '#f3e8ff', border: 'none',
+                          borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+                          color: '#6b21a8', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                        }}
+                        title="Download participant list (PDF)"
+                      >
+                        <FileDown size={14} />
+                      </button>
                       {canEdit && (
                         <button
                           onClick={() => navigate(`/organizer/events/${event.id}/edit`)}
                           style={{
-                            flex: 1, padding: '8px', background: '#e8f4fd', border: 'none',
+                            padding: '8px 12px', background: '#e8f4fd', border: 'none',
                             borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
                             color: '#e8622c', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
                           }}
                         >
                           <Edit3 size={14} /> Edit
+                        </button>
+                      )}
+                      {event.status === 'UPCOMING' && (
+                        <>
+                          <button
+                            onClick={() => handleStart(event.id, event.title)}
+                            style={{
+                              flex: 1, padding: '8px', background: '#d4edda', border: 'none',
+                              borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+                              color: '#155724', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                            }}
+                          >
+                            <Play size={14} /> Start
+                          </button>
+                          <button
+                            onClick={() => handlePostpone(event.id, event.title)}
+                            style={{
+                              flex: 1, padding: '8px', background: '#fce4ec', border: 'none',
+                              borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+                              color: '#880e4f', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                            }}
+                          >
+                            <CalendarClock size={14} /> Postpone
+                          </button>
+                        </>
+                      )}
+                      {event.status === 'ONGOING' && (
+                        <button
+                          onClick={() => handleEnd(event.id, event.title)}
+                          style={{
+                            flex: 1, padding: '8px', background: '#fff3cd', border: 'none',
+                            borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+                            color: '#856404', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                          }}
+                        >
+                          <StopCircle size={14} /> End
+                        </button>
+                      )}
+                      {['UPCOMING', 'ONGOING', 'POSTPONED'].includes(event.status) && (
+                        <button
+                          onClick={() => handleCancel(event.id, event.title)}
+                          style={{
+                            padding: '8px 12px', background: '#f8d7da', border: 'none',
+                            borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+                            color: '#721c24', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'
+                          }}
+                          title="Cancel event - notifies all booked attendees"
+                        >
+                          <Ban size={14} />
                         </button>
                       )}
                       {canEdit && !event.booking_count && (

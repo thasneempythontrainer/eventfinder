@@ -1,12 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { bookingAPI } from '../../services/api';
-import { Ticket, DollarSign, Download, XCircle } from 'lucide-react';
+import { bookingAPI, waitlistAPI } from '../../services/api';
+import { Ticket, DollarSign, Download, XCircle, Users, Hourglass } from 'lucide-react';
 import './Dashboard.css';
+
+const STATUS_LABELS = {
+  PENDING: 'Pending',
+  PENDING_APPROVAL: 'Awaiting Confirmation',
+  CONFIRMED: 'Confirmed',
+  CANCELLED: 'Cancelled',
+  REJECTED: 'Rejected',
+};
 
 const UserBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
+  const [waitlist, setWaitlist] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -23,8 +32,12 @@ const UserBookings = () => {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const response = await bookingAPI.myBookings();
-      setBookings(response.data.results || response.data);
+      const [bookingsRes, waitlistRes] = await Promise.all([
+        bookingAPI.myBookings(),
+        waitlistAPI.myWaitlist(),
+      ]);
+      setBookings(bookingsRes.data.results || bookingsRes.data);
+      setWaitlist(waitlistRes.data.results || waitlistRes.data || []);
     } catch (err) {
       setError('Failed to load bookings');
       console.error(err);
@@ -96,13 +109,28 @@ const UserBookings = () => {
             >
               <option value="">All Bookings</option>
               <option value="PENDING">Pending</option>
+              <option value="PENDING_APPROVAL">Awaiting Confirmation</option>
               <option value="CONFIRMED">Confirmed</option>
               <option value="CANCELLED">Cancelled</option>
+              <option value="REJECTED">Rejected</option>
             </select>
           </div>
           <p className="filter-info">
             Total: <strong>{filteredBookings.length}</strong> booking{filteredBookings.length !== 1 ? 's' : ''}
           </p>
+          {waitlist.length > 0 && (
+            <div className="waitlist-box" style={{ marginTop: '16px' }}>
+              <h4><Users size={14} /> My Waitlist</h4>
+              {waitlist.filter(w => w.status === 'WAITING').map(entry => (
+                <div key={entry.id} className="waitlist-entry">
+                  <Link to={`/events/${entry.event}`} style={{ color: '#084298', fontWeight: 600 }}>
+                    {entry.event_title}
+                  </Link>
+                  <span className="waitlist-pos">#{entry.position}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <main className="bookings-main">
@@ -116,7 +144,7 @@ const UserBookings = () => {
                       <p className="booking-ref">Booking Reference: {booking.booking_reference}</p>
                     </div>
                     <span className={`status-badge status-${booking.status.toLowerCase()}`}>
-                      {booking.status}
+                      {STATUS_LABELS[booking.status] || booking.status}
                     </span>
                   </div>
 
@@ -149,13 +177,18 @@ const UserBookings = () => {
                      <Link to={`/events/${booking.event?.id || booking.event}`} className="action-link">
                       View Event
                     </Link>
-                    {booking.status !== 'CANCELLED' && (
+                    {booking.status !== 'CANCELLED' && booking.status !== 'REJECTED' && (
                       <button 
                         onClick={() => handleDownloadTickets(booking.id, booking.booking_reference)}
                         className="action-button primary"
                       >
                         <Download size={14} /> Download Tickets
                       </button>
+                    )}
+                    {booking.status === 'PENDING_APPROVAL' && (
+                      <span className="action-note">
+                        <Hourglass size={14} /> Awaiting organizer confirmation
+                      </span>
                     )}
                     {booking.status === 'CONFIRMED' && (
                       <button 

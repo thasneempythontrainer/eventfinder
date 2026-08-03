@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, CharFilter
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.shortcuts import get_object_or_404
@@ -155,6 +156,14 @@ class EventViewSet(viewsets.ModelViewSet):
         if event.status in ('ONGOING', 'COMPLETED'):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Cannot edit events that are ongoing or completed.")
+
+        dates_changed = (
+            serializer.validated_data.get('start_date', event.start_date) != event.start_date
+            or serializer.validated_data.get('start_time', event.start_time) != event.start_time
+            or serializer.validated_data.get('end_date', event.end_date) != event.end_date
+            or serializer.validated_data.get('end_time', event.end_time) != event.end_time
+        )
+
         if user.role == 'ORGANIZER':
             serializer.save(status='PENDING')
             admin_users = User.objects.filter(role='ADMIN', is_active=True)
@@ -168,6 +177,16 @@ class EventViewSet(viewsets.ModelViewSet):
                 )
         else:
             serializer.save()
+
+        # Notify booked users if the schedule changed (e.g. postponed event)
+        if dates_changed:
+            self._notify_booked_users(
+                event,
+                'EVENT_POSTPONED',
+                'Event Rescheduled',
+                f'The schedule for "{event.title}" has been updated. '
+                f'Please check the event page for the new date and time.',
+            )
 
     def perform_destroy(self, instance):
         user = self.request.user
@@ -560,6 +579,171 @@ class EventViewSet(viewsets.ModelViewSet):
         )
 
         return Response({'status': 'Event rejected'})
+
+    @staticmethod
+    def _notify_booked_users(event, notification_type, title, message):
+        """Send a notification to every user with an active booking for an event."""
+        from bookings.models import Booking
+        user_ids = Booking.objects.filter(
+            event=event,
+            status__in=('PENDING', 'PENDING_APPROVAL', 'CONFIRMED'),
+        ).values_list('user_id', flat=True).distinct()
+        for user_id in user_ids:
+            Notification.objects.create(
+                user_id=user_id,
+                notification_type=notification_type,
+                title=title,
+                message=message,
+                related_event=event,
+            )
+
+    @action(detail=True, methods=['POST'])
+    def start_event(self, request, pk=None):
+        """Mark an upcoming event as ongoing (organizer only)."""
+        event = self.get_object()
+        if request.user.role != 'ORGANIZER' or event.organizer != request.user:
+            return Response(
+                {"detail": "Only the event organizer can start this event"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if event.status != 'UPCOMING':
+            return Response(
+                {"detail": "Only upcoming events can be started"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        event.status = 'ONGOING'
+        event.save()
+        return Response({'status': 'Event started', 'event_status': event.status})
+
+    @action(detail=True, methods=['POST'])
+    def end_event(self, request, pk=None):
+        """Stop/end an ongoing event unexpectedly (organizer only)."""
+        event = self.get_object()
+        if request.user.role != 'ORGANIZER' or event.organizer != request.user:
+            return Response(
+                {"detail": "Only the event organizer can end this event"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if event.status != 'ONGOING':
+            return Response(
+                {"detail": "Only ongoing events can be ended"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        event.status = 'COMPLETED'
+        event.save()
+        return Response({'status': 'Event ended', 'event_status': event.status})
+
+    @action(detail=True, methods=['POST'])
+    def cancel_event(self, request, pk=None):
+        """Cancel an event and notify all booked users (organizer/admin)."""
+        event = self.get_object()
+        is_organizer = request.user.role == 'ORGANIZER' and event.organizer == request.user
+        if not is_organizer and request.user.role != 'ADMIN':
+            return Response(
+                {"detail": "Only the event organizer or an admin can cancel this event"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if event.status in ('COMPLETED', 'CANCELLED'):
+            return Response(
+                {"detail": "This event has already ended or been cancelled"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        event.status = 'CANCELLED'
+        event.save()
+        self._notify_booked_users(
+            event,
+            'EVENT_CANCELLED',
+            'Event Cancelled',
+            f'We are sorry to inform you that "{event.title}" has been cancelled. '
+            f'Please contact the organizer for refund details.',
+        )
+        Notification.objects.create(
+            user=event.organizer,
+            notification_type='EVENT_CANCELLED',
+            title='Event Cancelled',
+            message=f'Your event "{event.title}" has been cancelled.',
+            related_event=event,
+        )
+        return Response({'status': 'Event cancelled'})
+
+    @action(detail=True, methods=['POST'])
+    def postpone_event(self, request, pk=None):
+        """Mark an upcoming event as postponed (organizer only)."""
+        event = self.get_object()
+        if request.user.role != 'ORGANIZER' or event.organizer != request.user:
+            return Response(
+                {"detail": "Only the event organizer can postpone this event"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        if event.status != 'UPCOMING':
+            return Response(
+                {"detail": "Only upcoming events can be postponed"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        event.status = 'POSTPONED'
+        event.save()
+        self._notify_booked_users(
+            event,
+            'EVENT_POSTPONED',
+            'Event Postponed',
+            f'"{event.title}" has been postponed. A new date and time will be announced '
+            f'by the organizer. Your booking remains valid.',
+        )
+        return Response({'status': 'Event postponed', 'event_status': event.status})
+
+    @action(detail=True, methods=['GET'])
+    def participants_pdf(self, request, pk=None):
+        """Export the participant list as a PDF (organizer/admin only)."""
+        event = self.get_object()
+        if request.user.role != 'ADMIN' and (
+            request.user.role != 'ORGANIZER' or event.organizer != request.user
+        ):
+            return Response(
+                {"detail": "Only the event organizer or an admin can export participants"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        from bookings.models import Booking
+        from .participants_pdf import generate_participants_pdf
+        bookings = Booking.objects.filter(event=event).order_by('created_at')
+        pdf_buffer = generate_participants_pdf(event, bookings)
+        response = HttpResponse(pdf_buffer, content_type='application/pdf')
+        filename = f"participants_{event.id}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=True, methods=['GET'])
+    def download_certificate(self, request, pk=None):
+        """Download a participation certificate (confirmed attendees only)."""
+        event = self.get_object()
+        if not event.certificate_available:
+            return Response(
+                {"detail": "No certificate is available for this event"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        from bookings.models import Booking
+        has_booking = Booking.objects.filter(
+            event=event,
+            user=request.user,
+            status__in=('CONFIRMED', 'PENDING_APPROVAL'),
+        ).exists()
+        if not has_booking:
+            return Response(
+                {"detail": "Only confirmed attendees can download a certificate"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        from .certificate_pdf import generate_certificate_pdf
+        template_path = None
+        if event.certificate_template:
+            try:
+                template_path = event.certificate_template.path
+            except Exception:
+                template_path = None
+        pdf_buffer = generate_certificate_pdf(event, request.user, template_path)
+        response = HttpResponse(pdf_buffer, content_type='application/pdf')
+        safe_title = ''.join(ch for ch in event.title if ch.isalnum() or ch in (' ', '-')).strip() or 'certificate'
+        filename = f"certificate_{safe_title.replace(' ', '_')}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
 
 class ParticipantRequestViewSet(viewsets.ModelViewSet):

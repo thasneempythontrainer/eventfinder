@@ -504,6 +504,65 @@
   color: #56141c;
 }
 
+.status-badge.status-pending_approval {
+  background: #ffeeba;
+  color: #6d4c00;
+}
+
+.status-badge.status-rejected {
+  background: #f5c6cb;
+  color: #56141c;
+}
+
+.waitlist-box {
+  background: #fff7f2;
+  border: 1px solid #f0d9cc;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.waitlist-box h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #7a3b1e;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.waitlist-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px dashed #e8d0c2;
+  font-size: 13px;
+}
+
+.waitlist-entry:last-child {
+  border-bottom: none;
+}
+
+.waitlist-pos {
+  background: #e8622c;
+  color: white;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+}
+
+.action-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6d4c00;
+  background: #fff3cd;
+  padding: 8px 14px;
+  border-radius: 6px;
+}
+
 .booking-details {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

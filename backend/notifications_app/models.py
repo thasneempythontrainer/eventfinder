@@ -29,6 +29,12 @@ class Notification(models.Model):
         ("SEATS_AVAILABLE", "Seats Became Available"),
         ("PARTICIPANT_REQUEST_NEW", "New Participant Request"),
         ("PARTICIPANT_RESPONSE", "New Participant Response"),
+        ("EVENT_CANCELLED", "Event Cancelled"),
+        ("EVENT_POSTPONED", "Event Postponed"),
+        ("BOOKING_CONFIRMED", "Booking Confirmed"),
+        ("BOOKING_REJECTED", "Booking Rejected"),
+        ("WAITLIST_JOINED", "Joined Waitlist"),
+        ("WAITLIST_ASSIGNED", "Waitlist Assigned"),
     )
     
     user = models.ForeignKey(

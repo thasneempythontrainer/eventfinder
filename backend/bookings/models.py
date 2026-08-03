@@ -13,8 +13,10 @@ class Booking(models.Model):
     
     STATUS_CHOICES = (
         ("PENDING", "Pending"),
+        ("PENDING_APPROVAL", "Awaiting Organizer Confirmation"),
         ("CONFIRMED", "Confirmed"),
         ("CANCELLED", "Cancelled"),
+        ("REJECTED", "Rejected"),
     )
     
     user = models.ForeignKey(
@@ -122,3 +124,65 @@ class Ticket(models.Model):
         filename = f"qr_{self.ticket_number}.png"
         self.qr_code.save(filename, ContentFile(buffer.getvalue()), save=False)
         self.save(update_fields=["qr_code"])
+
+
+class WaitlistEntry(models.Model):
+    """
+    Waitlist for fully-booked events. When a booked user cancels,
+    the next waiting user is automatically assigned a seat.
+    """
+
+    STATUS_CHOICES = (
+        ("WAITING", "Waiting"),
+        ("ASSIGNED", "Assigned"),
+        ("REMOVED", "Removed"),
+    )
+
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.CASCADE,
+        related_name="waitlist_entries",
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="waitlist_entries",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="WAITING",
+    )
+
+    position = models.PositiveIntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        unique_together = ("event", "user")
+
+    def __str__(self):
+        return f"{self.user.username} waiting for {self.event.title}"
+
+    @classmethod
+    def next_in_line(cls, event):
+        return cls.objects.filter(
+            event=event,
+            status="WAITING",
+        ).order_by("created_at").first()
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if is_new and self.status == "WAITING":
+            self.refresh_from_db()
+            self.position = WaitlistEntry.objects.filter(
+                event=self.event,
+                status="WAITING",
+                created_at__lte=self.created_at,
+            ).count()
+            WaitlistEntry.objects.filter(pk=self.pk).update(position=self.position)

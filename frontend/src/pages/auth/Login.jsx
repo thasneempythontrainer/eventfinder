@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
+import AuthLayout from './AuthLayout';
 import './Auth.css';
 
 const Login = () => {
   const navigate = useNavigate();
   const { login, error } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -27,8 +30,7 @@ const Login = () => {
 
     try {
       const user = await login(formData.email, formData.password);
-      
-      // Redirect based on role
+
       if (user.role === 'ADMIN') {
         navigate('/admin/dashboard');
       } else if (user.role === 'ORGANIZER') {
@@ -43,21 +45,26 @@ const Login = () => {
     }
   };
 
+  const displayError = formError || error;
+
   return (
-    <div className="auth-container">
-      <div className="auth-form-wrapper">
-        <div className="auth-header">
-          <h1>Event Finder</h1>
-          <p>Discover amazing events</p>
+    <AuthLayout>
+      <div className="auth-heading">
+        <h2>Welcome back</h2>
+        <p>Sign in to continue to EventFinder</p>
+      </div>
+
+      {displayError && (
+        <div className="alert alert-danger">
+          <AlertCircle size={16} /> {displayError}
         </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <h2>Login</h2>
-
-          {formError && <div className="error-message">{formError}</div>}
-
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
+      <form onSubmit={handleSubmit}>
+        <div className="input-group">
+          <label htmlFor="email">Email</label>
+          <div className="input-wrap">
+            <Mail size={18} className="input-icon" />
             <input
               type="email"
               id="email"
@@ -68,41 +75,50 @@ const Login = () => {
               required
             />
           </div>
+        </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
+        <div className="input-group">
+          <label htmlFor="password">Password</label>
+          <div className="input-wrap">
+            <Lock size={18} className="input-icon" />
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               id="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="Password"
+              placeholder="Enter your password"
               required
             />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() => setShowPassword(s => !s)}
+              aria-label="Toggle password visibility"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
-
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={loading}
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-
-        <div className="auth-footer">
-          <p>
-            Don't have an account?{' '}
-            <Link to="/register">Register here</Link>
-          </p>
-          <p>
-            Want to organize events?{' '}
-            <Link to="/register-organizer">Become an Organizer</Link>
-          </p>
         </div>
-      </div>
-    </div>
+
+        <div className="auth-actions">
+          <button type="submit" className="auth-button" disabled={loading}>
+            {loading ? 'Signing in...' : (
+              <>
+                <span>Sign In</span>
+                <ArrowRight size={18} />
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+
+      <div className="auth-divider">or</div>
+
+      <Link to="/register" className="auth-button secondary">
+        Create a new account
+      </Link>
+    </AuthLayout>
   );
 };
 
