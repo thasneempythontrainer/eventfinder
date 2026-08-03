@@ -1,5 +1,5 @@
 sudo systemctl start redis-server
-
+EventFinder@123
 
 redis-cli ping
 
