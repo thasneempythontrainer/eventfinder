@@ -6,6 +6,8 @@ import './App.css';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import RegisterOrganizer from './pages/auth/RegisterOrganizer';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 
 // Pages - Public
 import HomePage from './pages/events/HomePage';
@@ -110,6 +112,8 @@ const AppContent = () => {
           <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <Login />} />
           <Route path="/register" element={isAuthenticated ? <Navigate to="/" /> : <Register />} />
           <Route path="/register-organizer" element={isAuthenticated ? <Navigate to="/" /> : <RegisterOrganizer />} />
+          <Route path="/forgot-password" element={isAuthenticated ? <Navigate to="/" /> : <ForgotPassword />} />
+          <Route path="/reset-password" element={isAuthenticated ? <Navigate to="/" /> : <ResetPassword />} />
 
           {/* User Routes */}
           <Route element={<ProtectedRoute allowedRoles={['USER']} />}>

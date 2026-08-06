@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { participantRequestAPI } from '../../services/api';
 import { Users, PlusCircle, CalendarDays, CheckCircle, Clock, AlertCircle, Trash2 } from 'lucide-react';
+import '../events/Events.css';
 
 const OrganizerParticipantRequests = () => {
   const [requests, setRequests] = useState([]);
@@ -93,6 +94,7 @@ const RequestCard = ({ request, onDelete }) => {
   return (
     <div className="event-card">
       <div className="event-info">
+        <div className="event-category">{request.category_name || 'Event'}</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <h3>{request.event_title}</h3>
           <button

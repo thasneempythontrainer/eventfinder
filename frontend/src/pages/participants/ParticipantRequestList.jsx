@@ -1,21 +1,40 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { participantRequestAPI } from '../../services/api';
-import { Users, CalendarDays, MapPin, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { participantRequestAPI, categoryAPI } from '../../services/api';
+import { Users, CalendarDays, MapPin, AlertCircle, CheckCircle, Clock, Filter } from 'lucide-react';
+import '../events/Events.css';
 
 const ParticipantRequestList = () => {
   const [requests, setRequests] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchRequests();
+    fetchCategories();
   }, []);
+
+  useEffect(() => {
+    fetchRequests();
+  }, [selectedCategory]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await categoryAPI.list();
+      const data = response.data.results || response.data;
+      setCategories(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load categories:', err);
+    }
+  };
 
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const response = await participantRequestAPI.list({ status: 'OPEN' });
+      const params = { status: 'OPEN' };
+      if (selectedCategory) params.category = selectedCategory;
+      const response = await participantRequestAPI.list(params);
       setRequests(response.data.results || response.data);
     } catch (err) {
       setError('Failed to load participant requests');
@@ -25,12 +44,31 @@ const ParticipantRequestList = () => {
     }
   };
 
+  const clearFilter = () => setSelectedCategory('');
+
   return (
     <div className="page-enter" style={{ padding: '40px 0' }}>
       <div className="container">
         <div className="list-header">
           <h1>Open Participant Requests</h1>
           <p>Events looking for participants - express your interest!</p>
+        </div>
+
+        {/* Category Filter */}
+        <div className="filter-group" style={{ maxWidth: '320px', marginBottom: '24px' }}>
+          <label><Filter size={14} /> Filter by Category</label>
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="filter-select"
+          >
+            <option value="">All Categories</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {error && <div className="alert alert-danger">{error}</div>}
@@ -45,7 +83,12 @@ const ParticipantRequestList = () => {
           </div>
         ) : (
           <div className="no-events-found">
-            <p>No open participant requests at the moment</p>
+            <p>No open participant requests in this category</p>
+            {selectedCategory && (
+              <button onClick={clearFilter} className="reset-button" style={{ marginTop: '15px', display: 'inline-block' }}>
+                Show All Categories
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -62,6 +105,7 @@ const RequestCard = ({ request }) => {
   return (
     <Link to={`/participant-requests/${request.id}`} className="event-card">
       <div className="event-info">
+        <div className="event-category">{request.category_name || 'Event'}</div>
         <h3>{request.event_title}</h3>
         <p style={{ color: '#666', fontSize: '14px', marginBottom: '12px' }}>
           {request.description?.substring(0, 120)}

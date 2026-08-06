@@ -277,13 +277,16 @@ class EventDetailSerializer(serializers.ModelSerializer):
 
 class ParticipantRequestSerializer(serializers.ModelSerializer):
     event_title = serializers.CharField(source="event.title", read_only=True)
+    category = serializers.IntegerField(source="event.category_id", read_only=True)
+    category_name = serializers.CharField(source="event.category.name", read_only=True)
     organizer_name = serializers.CharField(source="organizer.username", read_only=True)
     response_count = serializers.SerializerMethodField()
 
     class Meta:
         model = ParticipantRequest
         fields = [
-            'id', 'event', 'event_title', 'organizer', 'organizer_name',
+            'id', 'event', 'event_title', 'category', 'category_name',
+            'organizer', 'organizer_name',
             'description', 'required_participants', 'current_participants',
             'deadline', 'status', 'response_count', 'created_at', 'updated_at'
         ]

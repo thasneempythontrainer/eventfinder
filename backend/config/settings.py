@@ -14,6 +14,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
+# Frontend URL used for building links sent in emails (e.g. password reset)
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 # ------------------------------------------------------------------
 # INSTALLED APPS
 # ------------------------------------------------------------------

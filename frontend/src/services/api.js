@@ -58,6 +58,8 @@ export const authAPI = {
     return api.post('/auth/register/organizer/', data);
   },
   login: (data) => api.post('/auth/login/', data),
+  requestPasswordReset: (data) => api.post('/auth/password-reset/', data),
+  confirmPasswordReset: (data) => api.post('/auth/password-reset/confirm/', data),
   getProfile: () => api.get('/users/me/'),
   updateProfile: (data) => api.put('/users/update_profile/', data),
   approveOrganizer: (userId) => api.post(`/users/${userId}/approve_organizer/`),

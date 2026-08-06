@@ -754,11 +754,14 @@ class ParticipantRequestViewSet(viewsets.ModelViewSet):
 
         event_id = self.request.query_params.get('event_id')
         status_param = self.request.query_params.get('status')
+        category_ids = self.request.query_params.getlist('category')
 
         if event_id:
             qs = qs.filter(event_id=event_id)
         if status_param:
             qs = qs.filter(status=status_param)
+        if category_ids:
+            qs = qs.filter(event__category_id__in=category_ids)
 
         if self.request.user.is_authenticated:
             if self.request.user.role == 'ORGANIZER':
