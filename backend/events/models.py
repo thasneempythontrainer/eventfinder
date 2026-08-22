@@ -1,7 +1,10 @@
 
 # Create your models here.
+from datetime import datetime
+
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 
 class Category(models.Model):
@@ -166,6 +169,41 @@ class Event(models.Model):
 
     def __str__(self):
         return self.title
+
+    @classmethod
+    def sync_statuses(cls):
+        """
+        Align status flags with the actual event schedule.
+
+        Only forward transitions are applied so manual states such as
+        PENDING / POSTPONED / CANCELLED are never overwritten:
+            UPCOMING -> ONGOING   once the start date/time is reached
+            UPCOMING -> COMPLETED once the end date/time has passed
+            ONGOING  -> COMPLETED once the end date/time has passed
+        """
+        now = timezone.localtime()
+        stale = []
+        for event in cls.objects.filter(status__in=("UPCOMING", "ONGOING")):
+            end_dt = timezone.make_aware(
+                datetime.combine(event.end_date, event.end_time)
+            )
+            if now > end_dt:
+                new_status = "COMPLETED"
+            elif event.status == "UPCOMING":
+                start_dt = timezone.make_aware(
+                    datetime.combine(event.start_date, event.start_time)
+                )
+                new_status = "ONGOING" if now >= start_dt else "UPCOMING"
+            else:
+                new_status = "ONGOING"
+
+            if new_status != event.status:
+                event.status = new_status
+                stale.append(event)
+
+        if stale:
+            cls.objects.bulk_update(stale, ["status"])
+        return len(stale)
 
 
 class EventImage(models.Model):

@@ -35,6 +35,7 @@ class EventFeedbackViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        Event.sync_statuses()
         if event.status != 'COMPLETED':
             return Response(
                 {"detail": "Feedback can only be submitted for completed events"},
@@ -181,6 +182,7 @@ class BlackBoxReportViewSet(viewsets.ModelViewSet):
 
         from events.models import Category
 
+        Event.sync_statuses()
         total_events = Event.objects.count()
         completed_events = Event.objects.filter(status='COMPLETED').count()
         upcoming_events = Event.objects.filter(status='UPCOMING').count()
@@ -274,6 +276,7 @@ class BlackBoxReportViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['POST'])
     def generate_report(self, request, pk=None):
+        Event.sync_statuses()
         event = Event.objects.get(pk=pk)
 
         if event.status != 'COMPLETED':

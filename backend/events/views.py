@@ -102,6 +102,7 @@ class EventViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
+        Event.sync_statuses()
         qs = Event.objects.all().annotate(
             booking_count=Count('bookings', filter=Q(bookings__status='CONFIRMED')),
             average_rating=Avg('experiences__rating')
@@ -206,18 +207,20 @@ class EventViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['GET'])
     def upcoming(self, request):
         """Get upcoming events"""
+        Event.sync_statuses()
         today = datetime.now().date()
         events = Event.objects.filter(
             status='UPCOMING',
             start_date__gte=today
         ).order_by('start_date')
-        
+
         serializer = self.get_serializer(events, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['GET'])
     def ongoing(self, request):
         """Get ongoing events"""
+        Event.sync_statuses()
         today = datetime.now().date()
         events = Event.objects.filter(
             Q(status='ONGOING') | (
@@ -233,6 +236,7 @@ class EventViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['GET'])
     def completed(self, request):
         """Get completed events"""
+        Event.sync_statuses()
         today = datetime.now().date()
         events = Event.objects.filter(
             Q(status='COMPLETED') | (Q(end_date__lt=today))
@@ -249,7 +253,8 @@ class EventViewSet(viewsets.ModelViewSet):
                 {"detail": "Only organizers can access this"},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
+
+        Event.sync_statuses()
         events = Event.objects.filter(organizer=request.user).order_by('-created_at')
         serializer = self.get_serializer(events, many=True)
         return Response(serializer.data)
@@ -292,6 +297,7 @@ class EventViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['GET'])
     def trending(self, request):
         """Get trending events (most bookings)"""
+        Event.sync_statuses()
         events = Event.objects.filter(
             status='UPCOMING'
         ).annotate(
@@ -402,7 +408,8 @@ class EventViewSet(viewsets.ModelViewSet):
                 {"detail": "Only admins can access this"},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
+
+        Event.sync_statuses()
         total_events = Event.objects.count()
         upcoming_events = Event.objects.filter(
             status='UPCOMING',
@@ -432,6 +439,7 @@ class EventViewSet(viewsets.ModelViewSet):
 
         from bookings.models import Booking
 
+        Event.sync_statuses()
         events = Event.objects.filter(organizer=request.user)
         total_events = events.count()
         completed_events = events.filter(status='COMPLETED').count()

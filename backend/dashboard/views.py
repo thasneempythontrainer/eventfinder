@@ -28,6 +28,7 @@ class AdminDashboardViewSet(viewsets.ViewSet):
             )
 
         # Get statistics
+        Event.sync_statuses()
         today = timezone.now().date()
         thirty_days_ago = timezone.now() - timedelta(days=30)
 
@@ -185,6 +186,7 @@ class OrganizerDashboardViewSet(viewsets.ViewSet):
         today = timezone.now().date()
         thirty_days_ago = timezone.now() - timedelta(days=30)
 
+        Event.sync_statuses()
         events = Event.objects.filter(organizer=request.user)
 
         stats = {
@@ -234,6 +236,7 @@ class OrganizerDashboardViewSet(viewsets.ViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        Event.sync_statuses()
         events = Event.objects.filter(organizer=request.user).annotate(
             booking_count=Count('bookings', filter=Q(bookings__status='CONFIRMED')),
             revenue=Sum(
