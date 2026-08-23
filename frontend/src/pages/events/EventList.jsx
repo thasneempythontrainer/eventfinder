@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { eventAPI, categoryAPI } from '../../services/api';
+import { getEventImage } from '../../utils/eventImages';
 import './Events.css';
 
 const EventList = () => {
@@ -298,18 +299,12 @@ const EventCard = ({ event }) => {
     });
   };
 
-  const images = event.gallery || event.images || [];
+  const image = getEventImage(event);
 
   return (
     <Link to={`/events/${event.id}`} className="event-card">
       <div className="event-image">
-        {event.banner ? (
-          <img src={event.banner} alt={event.title} />
-        ) : images.length > 0 ? (
-          <img src={images[0].image} alt={event.title} />
-        ) : (
-          <div className="event-image-placeholder">No Image</div>
-        )}
+        <img src={image} alt={event.title} />
         {event.is_fully_booked && event.status === 'UPCOMING' && <span className="badge badge-soldout">FULLY BOOKED</span>}
         {event.status === 'ONGOING' && <span className="badge badge-live">LIVE</span>}
         {event.status === 'COMPLETED' && <span className="badge badge-completed">COMPLETED</span>}
