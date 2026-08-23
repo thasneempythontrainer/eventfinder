@@ -158,15 +158,25 @@ class Command(BaseCommand):
         # Helper: download a banner image from the web
         # ------------------------------------------------------------------
         BANNER_URLS = {
-            "music": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=400&fit=crop",
+            # Summer Music Festival: outdoor festival crowd with stage lights
+            "music": "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800&h=400&fit=crop",
+            # Jazz Night: saxophonist on a dimly lit stage
             "jazz": "https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=800&h=400&fit=crop",
-            "tech": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop",
-            "food": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&h=400&fit=crop",
+            # TechSummit: keynote speaker presenting to an audience
+            "tech": "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800&h=400&fit=crop",
+            # Street Food Carnival: Indian street food spread
+            "food": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&h=400&fit=crop",
+            # Champions Cricket League: batsman mid-shot on the pitch
             "cricket": "https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=800&h=400&fit=crop",
-            "art": "https://images.unsplash.com/photo-1561214115-f2f134cc4912?w=800&h=400&fit=crop",
-            "startup": "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=800&h=400&fit=crop",
+            # Rangoli Art Exhibition: colorful paintings in a gallery wall
+            "art": "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=800&h=400&fit=crop",
+            # Startup India Summit: founders networking at a business event
+            "startup": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&h=400&fit=crop",
+            # Sunrise Yoga Festival: yoga pose at sunrise
             "yoga": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&h=400&fit=crop",
+            # Python Bootcamp: Python code on a laptop screen
             "python": "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=800&h=400&fit=crop",
+            # EDM Nights: DJ mixing console with laser lights
             "edm": "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&h=400&fit=crop",
         }
 
