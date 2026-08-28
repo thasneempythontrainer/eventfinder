@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { eventAPI, bookingAPI, experienceAPI, waitlistAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import Chat from '../../components/chat/Chat';
+import { getEventImage } from '../../utils/eventImages';
 import {
   CalendarDays, MapPin, DollarSign, FileText, Star, AlertTriangle,
   Ticket, ThumbsUp, Heart, Ban, Minus, Plus, MessageCircle, Send, Image, X,
@@ -374,13 +375,7 @@ const EventDetail = () => {
     <div className="event-detail-page page-enter">
       {/* Hero Section with Image */}
       <div className="event-detail-hero">
-        {event.banner ? (
-          <img src={event.banner} alt={event.title} className="hero-image" />
-        ) : (event.gallery || event.images || []).length > 0 ? (
-          <img src={(event.gallery || event.images)[0].image} alt={event.title} className="hero-image" />
-        ) : (
-          <div className="hero-image-placeholder">No Image</div>
-        )}
+        <img src={getEventImage(event)} alt={event.title} className="hero-image" />
         <div className="hero-overlay">
           <div className="container">
             <h1>{event.title}</h1>

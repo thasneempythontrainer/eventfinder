@@ -32,8 +32,10 @@ export const getCategoryImage = (categoryName) => {
 
 export const getEventImage = (event) => {
   if (!event) return DEFAULT_EVENT_IMAGE;
+  const categoryImage = getCategoryImage(event.category_name);
+  if (categoryImage) return categoryImage;
   if (event.banner) return event.banner;
   const images = event.gallery || event.images || [];
   if (images.length > 0 && images[0].image) return images[0].image;
-  return getCategoryImage(event.category_name) || DEFAULT_EVENT_IMAGE;
+  return DEFAULT_EVENT_IMAGE;
 };
