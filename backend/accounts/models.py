@@ -73,6 +73,8 @@ class OrganizerProfile(models.Model):
 
     address = models.TextField()
 
+    description = models.TextField(blank=True, default="")
+
     approval_status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,

@@ -57,6 +57,8 @@ class OrganizerProfileAdmin(admin.ModelAdmin):
 
     search_fields = (
         "organization_name",
+        "address",
+        "description",
         "user__username",
         "user__email",
     )

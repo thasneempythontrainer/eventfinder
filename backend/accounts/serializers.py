@@ -64,7 +64,7 @@ class OrganizerProfileSerializer(serializers.ModelSerializer):
         model = OrganizerProfile
         fields = [
             'id', 'organization_name', 'government_id', 'address',
-            'approval_status', 'created_at', 'updated_at'
+            'description', 'approval_status', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -74,6 +74,7 @@ class OrganizerRegistrationSerializer(serializers.ModelSerializer):
     organization_name = serializers.CharField(write_only=True)
     government_id = serializers.FileField(write_only=True)
     address = serializers.CharField(write_only=True, required=False, default="")
+    description = serializers.CharField(write_only=True, required=False, default="")
 
     class Meta:
         model = User
@@ -89,6 +90,7 @@ class OrganizerRegistrationSerializer(serializers.ModelSerializer):
             "organization_name",
             "government_id",
             "address",
+            "description",
         ]
         extra_kwargs = {
             "username": {"required": False},
@@ -99,6 +101,7 @@ class OrganizerRegistrationSerializer(serializers.ModelSerializer):
         organization_name = validated_data.pop("organization_name")
         government_id = validated_data.pop("government_id")
         address = validated_data.pop("address", "")
+        description = validated_data.pop("description", "")
         password = validated_data.pop("password")
 
         if not validated_data.get("phone_number"):
@@ -123,6 +126,7 @@ class OrganizerRegistrationSerializer(serializers.ModelSerializer):
             organization_name=organization_name,
             government_id=government_id,
             address=address,
+            description=description,
         )
 
         return user
@@ -224,7 +228,7 @@ class ProfileEditRequestSerializer(serializers.ModelSerializer):
         allowed_fields = {
             'first_name', 'last_name', 'username',
             'email', 'phone_number', 'profile_picture',
-            'organization_name', 'address'
+            'organization_name', 'address', 'description'
         }
         if not isinstance(value, dict):
             raise serializers.ValidationError("Proposed data must be a JSON object.")

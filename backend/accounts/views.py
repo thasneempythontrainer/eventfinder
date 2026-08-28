@@ -513,7 +513,7 @@ class ProfileEditRequestViewSet(viewsets.ModelViewSet):
         user = edit_request.user
         proposed = edit_request.proposed_data
 
-        profile_fields = {'organization_name', 'address'}
+        profile_fields = {'organization_name', 'address', 'description'}
         user_fields = proposed.keys() - profile_fields
 
         for field in user_fields:

@@ -9,7 +9,7 @@ import {
   Ticket, ThumbsUp, Heart, Ban, Minus, Plus, MessageCircle, Send, Image, X,
   SquareParking, Wifi, UtensilsCrossed, Droplets, DoorOpen, BatteryCharging,
   Accessibility, Languages, Backpack, Award, Phone, Hourglass, CalendarClock,
-  ListChecks, Users, CheckCircle2, XCircle
+  ListChecks, Users, CheckCircle2, XCircle, User, Mail
 } from 'lucide-react';
 import './Events.css';
 
@@ -531,8 +531,8 @@ const EventDetail = () => {
                 )}
 
                 <div className="detail-section">
-                  <h3>Organizer</h3>
-                  <p>
+                  <h3><User size={18} /> Organizer</h3>
+                  <p style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
                     <strong>{event.organizer_first_name} {event.organizer_last_name}</strong>
                     {event.organizer_name && (
                       <span style={{ marginLeft: '8px', color: '#666', fontSize: '14px' }}>
@@ -540,11 +540,16 @@ const EventDetail = () => {
                       </span>
                     )}
                   </p>
-                  <p style={{ marginTop: '6px' }}>
-                    <Phone size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                    <a href={`mailto:${event.organizer_email}`}>{event.organizer_email}</a>
+                  <p style={{ marginTop: '6px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      <Mail size={14} style={{ marginRight: '6px' }} />
+                      <a href={`mailto:${event.organizer_email}`}>{event.organizer_email}</a>
+                    </span>
                     {event.organizer_phone && (
-                      <span style={{ marginLeft: '16px', color: '#666' }}>{event.organizer_phone}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', color: '#666' }}>
+                        <Phone size={14} style={{ marginRight: '6px' }} />
+                        {event.organizer_phone}
+                      </span>
                     )}
                   </p>
                 </div>

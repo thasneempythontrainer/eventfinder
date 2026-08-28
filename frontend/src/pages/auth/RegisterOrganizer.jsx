@@ -112,7 +112,7 @@ const RegisterOrganizer = () => {
       formDataToSend.append('password', formData.password);
       formDataToSend.append('organization_name', formData.business_name);
       formDataToSend.append('government_id', formData.government_id);
-      formDataToSend.append('address', formData.business_description || '');
+      formDataToSend.append('description', formData.business_description || '');
 
       await registerOrganizer(formDataToSend);
 

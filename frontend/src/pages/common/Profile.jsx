@@ -19,6 +19,7 @@ const Profile = () => {
     username: '',
     organization_name: '',
     address: '',
+    description: '',
   });
 
   const isAdmin = user?.role === 'ADMIN';
@@ -33,6 +34,7 @@ const Profile = () => {
         username: user.username || '',
         organization_name: user.organizer_profile?.organization_name || '',
         address: user.organizer_profile?.address || '',
+        description: user.organizer_profile?.description || '',
       });
     }
     if (!isAdmin) {
@@ -92,6 +94,9 @@ const Profile = () => {
           if (formData.address !== (user.organizer_profile?.address || '')) {
             proposedData.address = formData.address;
           }
+          if (formData.description !== (user.organizer_profile?.description || '')) {
+            proposedData.description = formData.description;
+          }
         }
 
         if (Object.keys(proposedData).length === 0) {
@@ -122,6 +127,7 @@ const Profile = () => {
       username: user.username || '',
       organization_name: user.organizer_profile?.organization_name || '',
       address: user.organizer_profile?.address || '',
+      description: user.organizer_profile?.description || '',
     });
     setEditing(false);
     setMessage({ type: '', text: '' });
@@ -238,6 +244,16 @@ const Profile = () => {
                         rows={3}
                       />
                     </div>
+                    <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                      <label>Description</label>
+                      <textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleChange}
+                        rows={4}
+                        placeholder="Tell us about your business..."
+                      />
+                    </div>
                   </>
                 )}
               </div>
@@ -290,6 +306,10 @@ const Profile = () => {
                   <div className="profile-info-row">
                     <span className="profile-label">Address</span>
                     <span className="profile-value">{user.organizer_profile.address || '—'}</span>
+                  </div>
+                  <div className="profile-info-row">
+                    <span className="profile-label">Description</span>
+                    <span className="profile-value">{user.organizer_profile.description || '—'}</span>
                   </div>
                 </>
               )}

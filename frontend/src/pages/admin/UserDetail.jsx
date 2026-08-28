@@ -247,6 +247,10 @@ const UserDetail = () => {
                 <span className="profile-value">{userDetail.organizer_profile.address || '—'}</span>
               </div>
               <div className="profile-info-row">
+                <span className="profile-label">Description</span>
+                <span className="profile-value">{userDetail.organizer_profile.description || '—'}</span>
+              </div>
+              <div className="profile-info-row">
                 <span className="profile-label">Approval Status</span>
                 <span className="profile-value">
                   <span className={`badge status-${userDetail.organizer_profile.approval_status.toLowerCase()}`}>
