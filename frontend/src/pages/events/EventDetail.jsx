@@ -268,8 +268,8 @@ const EventDetail = () => {
     );
   }
 
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-US', {
+  const formatDate = (date, time) => {
+    return new Date(`${date}T${time}`).toLocaleDateString('en-US', {
       month: 'long',
       day: 'numeric',
       year: 'numeric',
@@ -278,8 +278,8 @@ const EventDetail = () => {
     });
   };
 
-  const formatTime = (date) => {
-    return new Date(date).toLocaleTimeString('en-US', {
+  const formatTime = (date, time) => {
+    return new Date(`${date}T${time}`).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -429,9 +429,9 @@ const EventDetail = () => {
 
                 <div className="detail-section">
                   <h3><CalendarDays size={18} /> Date & Time</h3>
-                  <p><strong>Start:</strong> {formatDate(event.start_date)}</p>
-                  <p><strong>End:</strong> {formatDate(event.end_date)}</p>
-                  <p><strong>Duration:</strong> {Math.ceil((new Date(event.end_date) - new Date(event.start_date)) / (1000 * 60 * 60))} hours</p>
+                  <p><strong>Start:</strong> {formatDate(event.start_date, event.start_time)}</p>
+                  <p><strong>End:</strong> {formatDate(event.end_date, event.end_time)}</p>
+                  <p><strong>Duration:</strong> {Math.ceil((new Date(`${event.end_date}T${event.end_time}`) - new Date(`${event.start_date}T${event.start_time}`)) / (1000 * 60 * 60))} hours</p>
                 </div>
 
                 <div className="detail-section">
