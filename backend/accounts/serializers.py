@@ -300,17 +300,17 @@ class AdminUserDetailSerializer(serializers.ModelSerializer):
     def get_total_events(self, obj):
         if obj.role != 'ORGANIZER':
             return None
-        if not hasattr(obj, 'organized_events'):
+        if not hasattr(obj, 'events'):
             return 0
-        return obj.organized_events.count()
+        return obj.events.count()
 
     def get_total_revenue(self, obj):
         if obj.role != 'ORGANIZER':
             return None
-        if not hasattr(obj, 'organized_events'):
+        if not hasattr(obj, 'events'):
             return 0
         from django.db.models import Sum
-        result = obj.organized_events.filter(status__in=['COMPLETED', 'ONGOING']).aggregate(
+        result = obj.events.filter(status__in=['COMPLETED', 'ONGOING']).aggregate(
             total=Sum('ticket_price')
         )
         return float(result['total'] or 0)
