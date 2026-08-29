@@ -269,20 +269,26 @@ const EventDetail = () => {
   }
 
   const formatDate = (date, time) => {
-    return new Date(`${date}T${time}`).toLocaleDateString('en-US', {
+    const d = new Date(date + 'T00:00:00');
+    const dateStr = d.toLocaleDateString('en-US', {
       month: 'long',
       day: 'numeric',
       year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
     });
+    const [hours, minutes] = time.split(':');
+    const h = parseInt(hours, 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    const timeStr = `${hour12}:${minutes} ${ampm}`;
+    return `${dateStr}, ${timeStr}`;
   };
 
-  const formatTime = (date, time) => {
-    return new Date(`${date}T${time}`).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const formatTime = (time) => {
+    const [hours, minutes] = time.split(':');
+    const h = parseInt(hours, 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
   };
 
   const formatRelativeDate = (dateStr) => {
