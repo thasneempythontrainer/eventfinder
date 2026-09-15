@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { notificationAPI } from '../../services/api';
-import { Bell, Check, Clock, CheckCircle, XCircle, Calendar, Trash2 } from 'lucide-react';
+import { Bell, Check, Clock, CheckCircle, XCircle, Calendar, Trash2, PenLine } from 'lucide-react';
 import './NotificationBell.css';
 
 const NotificationBell = () => {
@@ -80,6 +80,9 @@ const NotificationBell = () => {
       case 'EVENT_REJECTED': return <XCircle size={16} color="#e74c3c" />;
       case 'BOOKING_CONFIRMATION': return <Check size={16} color="#3498db" />;
       case 'EVENT_UPDATE': return <Calendar size={16} color="#e8622c" />;
+      case 'PROFILE_EDIT_REQUEST': return <PenLine size={16} color="#f39c12" />;
+      case 'PROFILE_EDIT_APPROVED': return <CheckCircle size={16} color="#2ecc71" />;
+      case 'PROFILE_EDIT_REJECTED': return <XCircle size={16} color="#e74c3c" />;
       default: return <Bell size={16} color="#666" />;
     }
   };
@@ -101,6 +104,8 @@ const NotificationBell = () => {
       case 'ORGANIZER_APPROVAL':
       case 'ORGANIZER_REJECTED':
         return user?.role === 'ADMIN' ? '/admin/approvals' : '/organizer/dashboard';
+      case 'PROFILE_EDIT_REQUEST':
+        return '/admin/profile-edit-requests';
       case 'EVENT_APPROVED':
       case 'EVENT_REJECTED':
       case 'EVENT_UPDATE':

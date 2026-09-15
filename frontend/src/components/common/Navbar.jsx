@@ -177,6 +177,13 @@ const Navbar = () => {
                         <CheckCircle size={16} /> Organizer Approvals
                       </Link>
                       <Link 
+                        to="/admin/profile-edit-requests"
+                        className="dropdown-item"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <PenLine size={16} /> Profile Edit Requests
+                      </Link>
+                      <Link 
                         to="/admin/users"
                         className="dropdown-item"
                         onClick={() => setUserMenuOpen(false)}
@@ -339,6 +346,13 @@ const Navbar = () => {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <CheckCircle size={16} /> Approvals
+                    </Link>
+                    <Link 
+                      to="/admin/profile-edit-requests"
+                      className="mobile-nav-link"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <PenLine size={16} /> Profile Edit Requests
                     </Link>
                     <Link 
                       to="/admin/users"
