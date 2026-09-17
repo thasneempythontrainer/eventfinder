@@ -32,6 +32,7 @@ const EventDetail = () => {
   const [expSubmitting, setExpSubmitting] = useState(false);
   const [showExpForm, setShowExpForm] = useState(false);
   const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   useEffect(() => {
     fetchEventDetail();
@@ -240,6 +241,23 @@ const EventDetail = () => {
     }
   };
 
+  const handleToggleFavorite = async () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    setFavoriteLoading(true);
+    setError('');
+    try {
+      const response = await eventAPI.toggleFavorite(event.id);
+      setEvent(prev => ({ ...prev, is_favorited: response.data.is_favorited }));
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to update favorites');
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
+
   const handleDownloadCertificate = async () => {
     try {
       const response = await eventAPI.downloadCertificate(event.id);
@@ -332,7 +350,7 @@ const EventDetail = () => {
       setCommentText(prev => ({ ...prev, [expId]: '' }));
       fetchEventExperiences();
     } catch (err) {
-      console.error(err);
+      setError(err.response?.data?.detail || 'Failed to post comment');
     }
   };
 
@@ -376,6 +394,9 @@ const EventDetail = () => {
 
   const availableSeats = event.available_seats || 0;
   const maxTickets = Math.min(10, availableSeats);
+  const canReply = isAuthenticated && user && (
+    event.organizer === user.id || event.has_confirmed_booking
+  );
 
   return (
     <div className="event-detail-page page-enter">
@@ -667,18 +688,26 @@ const EventDetail = () => {
                                   </div>
                                 </div>
                               ))}
-                              <div className="exp-comment-input">
-                                <input
-                                  type="text"
-                                  placeholder="Write a comment..."
-                                  value={commentText[exp.id] || ''}
-                                  onChange={(e) => setCommentText(prev => ({ ...prev, [exp.id]: e.target.value }))}
-                                  onKeyDown={(e) => e.key === 'Enter' && handleCommentExperience(exp.id)}
-                                />
-                                <button onClick={() => handleCommentExperience(exp.id)} className="exp-comment-send">
-                                  <Send size={13} />
-                                </button>
-                              </div>
+                              {canReply ? (
+                                <div className="exp-comment-input">
+                                  <input
+                                    type="text"
+                                    placeholder="Write a comment..."
+                                    value={commentText[exp.id] || ''}
+                                    onChange={(e) => setCommentText(prev => ({ ...prev, [exp.id]: e.target.value }))}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleCommentExperience(exp.id)}
+                                  />
+                                  <button onClick={() => handleCommentExperience(exp.id)} className="exp-comment-send">
+                                    <Send size={13} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <p className="exp-comment-locked">
+                                  {isAuthenticated
+                                    ? 'Only the event organizer or attendees can reply to experiences.'
+                                    : 'Login to reply to experiences.'}
+                                </p>
+                              )}
                             </div>
                           )}
                         </div>
@@ -887,8 +916,13 @@ const EventDetail = () => {
             )}
 
             {isAuthenticated && user?.role === 'USER' && (
-              <button className="share-button">
-                <Heart size={16} /> Add to Favorites
+              <button
+                className={`share-button ${event.is_favorited ? 'favorited' : ''}`}
+                onClick={handleToggleFavorite}
+                disabled={favoriteLoading}
+              >
+                <Heart size={16} fill={event.is_favorited ? 'currentColor' : 'none'} />
+                {favoriteLoading ? 'Updating...' : event.is_favorited ? 'Remove from Favorites' : 'Add to Favorites'}
               </button>
             )}
           </div>

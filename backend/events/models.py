@@ -224,6 +224,33 @@ class EventImage(models.Model):
         return f"{self.event.title} Image"
 
 
+class EventFavorite(models.Model):
+    """
+    Model for users to save/favorite events
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="favorite_events",
+    )
+
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.CASCADE,
+        related_name="favorited_by",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "event")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} favorited {self.event.title}"
+
+
 class ParticipantRequest(models.Model):
     STATUS_CHOICES = (
         ("OPEN", "Open"),

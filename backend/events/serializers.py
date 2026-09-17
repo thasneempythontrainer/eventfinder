@@ -70,6 +70,7 @@ class EventSerializer(serializers.ModelSerializer):
     booking_count = serializers.SerializerMethodField()
     is_fully_booked = serializers.SerializerMethodField()
     waitlist_count = serializers.SerializerMethodField()
+    is_favorited = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -87,7 +88,7 @@ class EventSerializer(serializers.ModelSerializer):
             'restrooms_available', 'charging_stations', 'wheelchair_accessible',
             'prayer_room', 'certificate_available',
             'status', 'gallery', 'images', 'booking_count', 'is_fully_booked',
-            'waitlist_count', 'created_at', 'updated_at'
+            'waitlist_count', 'is_favorited', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'available_seats']
 
@@ -99,6 +100,12 @@ class EventSerializer(serializers.ModelSerializer):
 
     def get_waitlist_count(self, obj):
         return obj.waitlist_entries.filter(status='WAITING').count()
+
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.favorited_by.filter(user=request.user).exists()
+        return False
 
 
 class EventCreateSerializer(serializers.ModelSerializer):
@@ -208,6 +215,7 @@ class EventDetailSerializer(serializers.ModelSerializer):
     waitlist_count = serializers.SerializerMethodField()
     user_waitlist_status = serializers.SerializerMethodField()
     has_confirmed_booking = serializers.SerializerMethodField()
+    is_favorited = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -225,7 +233,7 @@ class EventDetailSerializer(serializers.ModelSerializer):
             'prayer_room', 'certificate_available',
             'status', 'gallery', 'images', 'booking_count',
             'average_rating', 'is_fully_booked', 'waitlist_count',
-            'user_waitlist_status', 'has_confirmed_booking',
+            'user_waitlist_status', 'has_confirmed_booking', 'is_favorited',
             'created_at', 'updated_at'
         ]
 
@@ -257,6 +265,12 @@ class EventDetailSerializer(serializers.ModelSerializer):
                 user=request.user,
                 status__in=('CONFIRMED', 'PENDING_APPROVAL'),
             ).exists()
+        return False
+
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.favorited_by.filter(user=request.user).exists()
         return False
 
     def get_organizer_profile_picture(self, obj):

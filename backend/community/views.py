@@ -20,7 +20,6 @@ class EventExperienceViewSet(viewsets.ModelViewSet):
     ViewSet for handling post-event experience sharing
     """
     permission_classes = [IsAuthenticatedOrReadOnly]
-    lookup_field = 'event_id'
 
     def get_queryset(self):
         return EventExperience.objects.all().order_by('-created_at')
@@ -157,9 +156,23 @@ class EventExperienceViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['POST'])
     def add_comment(self, request, pk=None):
-        """Add a comment to an experience"""
+        """Add a comment to an experience (event organizer or attendees only)"""
         experience = self.get_object()
-        
+        event = experience.event
+
+        is_organizer = event.organizer == request.user
+        has_booking = Booking.objects.filter(
+            user=request.user,
+            event=event,
+            status='CONFIRMED'
+        ).exists()
+
+        if not is_organizer and not has_booking:
+            return Response(
+                {"detail": "Only the event organizer or users who attended the event can reply to experiences."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         serializer = ExperienceCommentCreateSerializer(
             data=request.data,
             context={

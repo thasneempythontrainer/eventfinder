@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 
 from accounts.models import User
 from notifications_app.models import Notification
-from .models import Event, Category, EventImage, ParticipantRequest, ParticipantResponse
+from .models import Event, Category, EventImage, EventFavorite, ParticipantRequest, ParticipantResponse
 from .serializers import (
     EventSerializer, EventDetailSerializer, EventCreateSerializer,
     EventUpdateSerializer, CategorySerializer, EventImageSerializer,
@@ -752,6 +752,30 @@ class EventViewSet(viewsets.ModelViewSet):
         filename = f"certificate_{safe_title.replace(' ', '_')}.pdf"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
+
+    @action(detail=True, methods=['POST'])
+    def toggle_favorite(self, request, pk=None):
+        """Toggle the authenticated user's favorite for an event"""
+        event = self.get_object()
+        favorite, created = EventFavorite.objects.get_or_create(
+            user=request.user,
+            event=event,
+        )
+        if not created:
+            favorite.delete()
+        return Response({'is_favorited': created})
+
+    @action(detail=False, methods=['GET'])
+    def my_favorites(self, request):
+        """Get the authenticated user's favorite events"""
+        events = Event.objects.filter(
+            favorited_by__user=request.user
+        ).annotate(
+            booking_count=Count('bookings', filter=Q(bookings__status='CONFIRMED')),
+            average_rating=Avg('experiences__rating')
+        ).order_by('-favorited_by__created_at')
+        serializer = EventSerializer(events, many=True, context={'request': request})
+        return Response(serializer.data)
 
 
 class ParticipantRequestViewSet(viewsets.ModelViewSet):

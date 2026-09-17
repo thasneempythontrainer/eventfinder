@@ -162,8 +162,16 @@ const UsersList = () => {
                     <td className="text-muted">{u.phone_number || '—'}</td>
                     <td className="text-muted">{new Date(u.created_at).toLocaleDateString()}</td>
                     <td>
-                      <span className={`status-dot ${u.is_active ? 'active' : 'inactive'}`} />
-                      {u.is_active ? 'Active' : 'Inactive'}
+                      {u.role === 'ORGANIZER' ? (
+                        <span className={`badge status-${(u.organizer_profile?.approval_status || 'PENDING').toLowerCase()}`}>
+                          {u.organizer_profile?.approval_status || 'PENDING'}
+                        </span>
+                      ) : (
+                        <>
+                          <span className={`status-dot ${u.is_active ? 'active' : 'inactive'}`} />
+                          {u.is_active ? 'Active' : 'Inactive'}
+                        </>
+                      )}
                     </td>
                     <td>
                       {u.role === 'USER' && (
