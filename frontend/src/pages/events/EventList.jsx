@@ -52,8 +52,8 @@ const EventList = () => {
         search: searchQuery,
         category: selectedCategory,
         ordering: sortBy,
-        limit: ITEMS_PER_PAGE,
-        offset: (currentPage - 1) * ITEMS_PER_PAGE,
+        page: currentPage,
+        page_size: ITEMS_PER_PAGE,
       };
 
       if (selectedCity) params.city = selectedCity;
@@ -207,7 +207,7 @@ const EventList = () => {
               <option value="-start_date">Latest First</option>
               <option value="start_date">Earliest First</option>
               <option value="-average_rating">Top Rated</option>
-              <option value="-bookings_count">Most Popular</option>
+              <option value="-booking_count">Most Popular</option>
               <option value="ticket_price">Price: Low to High</option>
               <option value="-ticket_price">Price: High to Low</option>
             </select>

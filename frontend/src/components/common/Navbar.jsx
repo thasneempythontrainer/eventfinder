@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, Ticket, Star, ListPlus, PlusCircle, CheckCircle,
   CalendarDays, LogOut, Home, Search, ClipboardList, KeyRound, PenLine, Menu,
-  User, Users, Handshake, BarChart3, Tag
+  User, Users, Handshake, BarChart3, Tag, Heart
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import './Navbar.css';
@@ -116,6 +116,13 @@ const Navbar = () => {
                         onClick={() => setUserMenuOpen(false)}
                       >
                         <Ticket size={16} /> My Bookings
+                      </Link>
+                      <Link 
+                        to="/user/favorites"
+                        className="dropdown-item"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <Heart size={16} /> My Favorites
                       </Link>
                       <Link 
                         to="/user/experiences"
@@ -289,6 +296,13 @@ const Navbar = () => {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Ticket size={16} /> Bookings
+                    </Link>
+                    <Link 
+                      to="/user/favorites"
+                      className="mobile-nav-link"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Heart size={16} /> Favorites
                     </Link>
                     <Link 
                       to="/user/experiences"

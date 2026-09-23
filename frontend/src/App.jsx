@@ -32,6 +32,7 @@ import OrganizerAnalytics from './pages/blackbox/OrganizerAnalytics';
 
 // User Pages
 import UserDashboard from './pages/user/Dashboard';
+import UserFavorites from './pages/user/Favorites';
 import UserBookings from './pages/user/Bookings';
 import UserExperiences from './pages/user/Experiences';
 
@@ -119,6 +120,7 @@ const AppContent = () => {
           {/* User Routes */}
           <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
             <Route path="/user/dashboard" element={<UserDashboard />} />
+            <Route path="/user/favorites" element={<UserFavorites />} />
             <Route path="/user/bookings" element={<UserBookings />} />
             <Route path="/user/experiences" element={<UserExperiences />} />
             <Route path="/user/participant-requests" element={<ParticipantRequestList />} />

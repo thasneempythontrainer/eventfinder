@@ -9,6 +9,7 @@ const ManageEvents = () => {
   const navigate = useNavigate();
   const [pendingEvents, setPendingEvents] = useState([]);
   const [allEvents, setAllEvents] = useState([]);
+  const [allEventsCount, setAllEventsCount] = useState(0);
   const [pendingOrganizers, setPendingOrganizers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,11 +26,15 @@ const ManageEvents = () => {
       setLoading(true);
       const [pendingRes, allRes, orgRes] = await Promise.all([
         eventAPI.pendingApproval(),
-        eventAPI.list({ limit: 100 }),
+        eventAPI.list({ page_size: 500 }),
         dashboardAPI.adminPendingApprovals()
       ]);
       setPendingEvents(pendingRes.data || []);
-      setAllEvents(allRes.data.results || allRes.data);
+      const allData = allRes.data.results || allRes.data;
+      setAllEvents(allData);
+      setAllEventsCount(
+        allRes.data.count !== undefined ? allRes.data.count : allData.length
+      );
       setPendingOrganizers(orgRes.data || []);
     } catch (err) {
       setError('Failed to load data');
@@ -289,7 +294,7 @@ const ManageEvents = () => {
           {[
             { id: 'organizer-approval', icon: Users, label: 'Organizer Approval', count: pendingOrganizers.length, color: '#f39c12' },
             { id: 'event-approval', icon: Calendar, label: 'Event Approval', count: pendingEvents.length, color: '#3498db' },
-            { id: 'all-events', icon: FileText, label: 'All Events', count: allEvents.length, color: '#2ecc71' },
+            { id: 'all-events', icon: FileText, label: 'All Events', count: allEventsCount, color: '#2ecc71' },
           ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
               padding: '12px 20px', border: 'none', cursor: 'pointer', fontWeight: '600',
@@ -300,7 +305,7 @@ const ManageEvents = () => {
             }}>
               <tab.icon size={16} />
               {tab.label}
-              {tab.count > 0 && (
+              {(tab.id === 'all-events' || tab.count > 0) && (
                 <span style={{
                   padding: '2px 8px', borderRadius: '10px', fontSize: '11px',
                   background: activeTab === tab.id ? tab.color : '#ddd',

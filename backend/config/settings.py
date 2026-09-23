@@ -212,6 +212,8 @@ REST_FRAMEWORK = {
         "rest_framework.pagination.PageNumberPagination",
 
     "PAGE_SIZE": 10,
+
+    "PAGE_SIZE_QUERY_PARAM": "page_size",
 }
 
 # ------------------------------------------------------------------

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { dashboardAPI, bookingAPI } from '../../services/api';
-import { Ticket, CalendarDays, CheckCircle, DollarSign, Search } from 'lucide-react';
+import { Ticket, CalendarDays, CheckCircle, DollarSign, Search, Heart } from 'lucide-react';
 import AnimatedCount from '../../components/common/AnimatedCount';
 import './Dashboard.css';
 
@@ -143,6 +143,9 @@ const UserDashboard = () => {
             </Link>
             <Link to="/user/bookings" className="action-button">
               <Ticket size={16} /> My Bookings
+            </Link>
+            <Link to="/user/favorites" className="action-button">
+              <Heart size={16} /> My Favorites
             </Link>
             <Link to="/user/experiences" className="action-button">
               <CheckCircle size={16} /> My Experiences
