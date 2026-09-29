@@ -1,7 +1,10 @@
 from rest_framework import serializers
 from django.utils import timezone
 
-from .models import Category, Event, EventImage, ParticipantRequest, ParticipantResponse
+from .models import (
+    Category, Event, EventImage, EventChangeRequest, ParticipantRequest,
+    ParticipantResponse,
+)
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -71,6 +74,7 @@ class EventSerializer(serializers.ModelSerializer):
     is_fully_booked = serializers.SerializerMethodField()
     waitlist_count = serializers.SerializerMethodField()
     is_favorited = serializers.SerializerMethodField()
+    has_pending_changes = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
@@ -88,9 +92,13 @@ class EventSerializer(serializers.ModelSerializer):
             'restrooms_available', 'charging_stations', 'wheelchair_accessible',
             'prayer_room', 'certificate_available',
             'status', 'gallery', 'images', 'booking_count', 'is_fully_booked',
-            'waitlist_count', 'is_favorited', 'created_at', 'updated_at'
+            'waitlist_count', 'is_favorited', 'has_pending_changes',
+            'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'available_seats']
+
+    def get_has_pending_changes(self, obj):
+        return obj.change_requests.filter(status='PENDING').exists()
 
     def get_booking_count(self, obj):
         return obj.bookings.filter(status='CONFIRMED').count()
@@ -335,3 +343,43 @@ class ParticipantResponseSerializer(serializers.ModelSerializer):
             'user', 'user_name', 'message', 'status', 'created_at'
         ]
         read_only_fields = ['id', 'user', 'created_at']
+
+
+class EventChangeRequestSerializer(serializers.ModelSerializer):
+    """
+    Exposes an organizer's proposed edit so an admin can compare every field
+    before and after, then approve or reject the request.
+    """
+
+    event_title = serializers.CharField(source="event.title", read_only=True)
+    event_status = serializers.CharField(source="event.status", read_only=True)
+    organizer_name = serializers.CharField(source="organizer.username", read_only=True)
+    reviewed_by_username = serializers.CharField(
+        source="reviewed_by.username", read_only=True, allow_null=True
+    )
+    changed_field_count = serializers.SerializerMethodField()
+    summary = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EventChangeRequest
+        fields = [
+            'id', 'event', 'event_title', 'event_status',
+            'organizer', 'organizer_name',
+            'previous_data', 'proposed_data', 'changes',
+            'changed_field_count', 'summary', 'previous_status',
+            'new_banner', 'new_certificate_template',
+            'status', 'admin_notes', 'reviewed_by', 'reviewed_by_username',
+            'reviewed_at', 'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'event', 'organizer', 'previous_data', 'proposed_data',
+            'changes', 'previous_status', 'new_banner',
+            'new_certificate_template', 'reviewed_by', 'reviewed_at',
+            'created_at', 'updated_at',
+        ]
+
+    def get_changed_field_count(self, obj):
+        return len(obj.changes or [])
+
+    def get_summary(self, obj):
+        return obj.summary()

@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, Ticket, Star, ListPlus, PlusCircle, CheckCircle,
   CalendarDays, LogOut, Home, Search, ClipboardList, KeyRound, PenLine, Menu,
-  User, Users, Handshake, BarChart3, Tag, Heart
+  User, Users, Handshake, BarChart3, Tag, Heart, GitCompare
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import './Navbar.css';
@@ -191,6 +191,13 @@ const Navbar = () => {
                         <PenLine size={16} /> Profile Edit Requests
                       </Link>
                       <Link 
+                        to="/admin/event-change-requests"
+                        className="dropdown-item"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <GitCompare size={16} /> Event Update Reviews
+                      </Link>
+                      <Link 
                         to="/admin/users"
                         className="dropdown-item"
                         onClick={() => setUserMenuOpen(false)}
@@ -367,6 +374,13 @@ const Navbar = () => {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <PenLine size={16} /> Profile Edit Requests
+                    </Link>
+                    <Link 
+                      to="/admin/event-change-requests"
+                      className="mobile-nav-link"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <GitCompare size={16} /> Event Update Reviews
                     </Link>
                     <Link 
                       to="/admin/users"

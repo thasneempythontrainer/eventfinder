@@ -206,6 +206,119 @@ class Event(models.Model):
         return len(stale)
 
 
+class EventChangeRequest(models.Model):
+    """
+    Stores a proposed edit to an already approved event.
+
+    Organizer updates never touch the live event record directly. Instead the
+    new values are parked here until an admin reviews the before/after
+    comparison and approves or rejects the request.
+    """
+
+    STATUS_CHOICES = (
+        ("PENDING", "Pending Review"),
+        ("APPROVED", "Approved"),
+        ("REJECTED", "Rejected"),
+        ("SUPERSEDED", "Superseded"),
+    )
+
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.CASCADE,
+        related_name="change_requests",
+    )
+
+    organizer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="event_change_requests",
+    )
+
+    previous_data = models.JSONField(
+        default=dict,
+        help_text="Snapshot of the changed fields before the edit.",
+    )
+
+    proposed_data = models.JSONField(
+        default=dict,
+        help_text="New values submitted by the organizer (non file fields).",
+    )
+
+    changes = models.JSONField(
+        default=list,
+        help_text="Precomputed list of {field, label, old, new} entries for display.",
+    )
+
+    previous_status = models.CharField(
+        max_length=20,
+        default="UPCOMING",
+        help_text="Event status to restore once the changes are approved.",
+    )
+
+    new_banner = models.ImageField(
+        upload_to="event_change_requests/",
+        null=True,
+        blank=True,
+    )
+
+    new_certificate_template = models.FileField(
+        upload_to="certificate_change_requests/",
+        null=True,
+        blank=True,
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="PENDING",
+    )
+
+    admin_notes = models.TextField(blank=True, default="")
+
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_event_changes",
+    )
+
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Event change request"
+        verbose_name_plural = "Event change requests"
+        indexes = [
+            models.Index(fields=["status", "-created_at"]),
+            models.Index(fields=["event", "status"]),
+        ]
+
+    def __str__(self):
+        return f"{self.organizer.username} -> {self.event.title} ({self.status})"
+
+    @property
+    def is_pending(self):
+        return self.status == "PENDING"
+
+    @property
+    def changed_field_names(self):
+        return [change.get("field") for change in (self.changes or [])]
+
+    def summary(self):
+        """Human readable one liner used inside notification messages."""
+        fields = self.changed_field_names
+        if not fields:
+            return "no field changes"
+        if len(fields) == 1:
+            return f"1 field changed ({fields[0]})"
+        return f"{len(fields)} fields changed: {', '.join(fields)}"
+
+
 class EventImage(models.Model):
 
     event = models.ForeignKey(

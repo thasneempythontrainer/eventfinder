@@ -113,9 +113,22 @@ export const eventAPI = {
   startEvent: (id) => api.post(`/events/${id}/start_event/`),
   endEvent: (id) => api.post(`/events/${id}/end_event/`),
   cancelEvent: (id) => api.post(`/events/${id}/cancel_event/`),
-  postponeEvent: (id) => api.post(`/events/${id}/postpone_event/`),
+  postponeEvent: (id, reason) => api.post(`/events/${id}/postpone_event/`, { reason }),
+  pendingChanges: (id) => api.get(`/events/${id}/pending_changes/`),
+  changeHistory: (id) => api.get(`/events/${id}/change_history/`),
   participantsPdf: (id) => api.get(`/events/${id}/participants_pdf/`, { responseType: 'blob' }),
   downloadCertificate: (id) => api.get(`/events/${id}/download_certificate/`, { responseType: 'blob' }),
+};
+
+// Event change request APIs (admin review of organizer edits)
+export const eventChangeAPI = {
+  list: (params = {}) => api.get('/event-change-requests/', { params }),
+  pending: () => api.get('/event-change-requests/pending/'),
+  get: (id) => api.get(`/event-change-requests/${id}/`),
+  approve: (id, adminNotes) =>
+    api.post(`/event-change-requests/${id}/approve/`, { admin_notes: adminNotes }),
+  reject: (id, adminNotes) =>
+    api.post(`/event-change-requests/${id}/reject/`, { admin_notes: adminNotes }),
 };
 
 // Booking APIs

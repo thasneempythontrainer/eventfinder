@@ -219,14 +219,29 @@ const EditEvent = () => {
         formDataToSend.append('banner', formData.banner);
       }
 
-      await eventAPI.update(id, formDataToSend);
-      setSuccess('Event updated successfully! Changes are pending admin re-approval.');
+      const response = await eventAPI.update(id, formDataToSend);
+      if (response.data?.requires_admin_approval) {
+        setSuccess(
+          'Update submitted for admin review. The event is still live with its ' +
+          'current details until an admin approves the change.'
+        );
+      } else {
+        setSuccess('Event updated successfully!');
+      }
 
       setTimeout(() => {
         navigate('/organizer/events');
-      }, 1500);
+      }, 2000);
     } catch (err) {
-      setError(err.response?.data?.detail || err.response?.data?.error || 'Failed to update event');
+      const data = err.response?.data;
+      const message =
+        data?.detail ||
+        (typeof data === 'object' && data !== null
+          ? Object.values(data).flat().join(' ')
+          : null) ||
+        err.response?.data?.error ||
+        'Failed to update event';
+      setError(message);
       console.error(err);
     } finally {
       setSaving(false);

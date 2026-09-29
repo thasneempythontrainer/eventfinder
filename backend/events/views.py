@@ -2,20 +2,38 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.exceptions import ValidationError
 from django.http import HttpResponse
+from django.db.models import Q, Count, Avg
+from django.shortcuts import get_object_or_404
+from django.utils import timezone as django_timezone
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, CharFilter
 from rest_framework.filters import SearchFilter, OrderingFilter
-from django.shortcuts import get_object_or_404
-from django.db.models import Q, Count, Avg
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from accounts.models import User
 from notifications_app.models import Notification
-from .models import Event, Category, EventImage, EventFavorite, ParticipantRequest, ParticipantResponse
+from .changes import (
+    ATTENDEE_RELEVANT_FIELDS,
+    FIELD_LABELS,
+    build_diff,
+    coerce_proposed_value,
+    file_name,
+)
+from .models import (
+    Event,
+    Category,
+    EventImage,
+    EventFavorite,
+    EventChangeRequest,
+    ParticipantRequest,
+    ParticipantResponse,
+)
 from .serializers import (
     EventSerializer, EventDetailSerializer, EventCreateSerializer,
     EventUpdateSerializer, CategorySerializer, EventImageSerializer,
-    ParticipantRequestSerializer, ParticipantResponseSerializer,
+    EventChangeRequestSerializer, ParticipantRequestSerializer,
+    ParticipantResponseSerializer,
 )
 
 
@@ -122,6 +140,29 @@ class EventViewSet(viewsets.ModelViewSet):
             return EventDetailSerializer
         return EventSerializer
 
+    def update(self, request, *args, **kwargs):
+        """
+        Organizer edits are staged for admin review instead of being applied,
+        so the response is a change request rather than the updated event.
+        """
+        self._change_request = None
+        response = super().update(request, *args, **kwargs)
+        if getattr(self, '_change_request', None) is not None:
+            payload = EventChangeRequestSerializer(
+                self._change_request, context={'request': request}
+            ).data
+            return Response(
+                {
+                    'detail': 'Your changes were submitted for admin review. '
+                              'The event stays live with its current details '
+                              'until the request is approved.',
+                    'requires_admin_approval': True,
+                    'change_request': payload,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
+        return response
+
     def perform_create(self, serializer):
         user = self.request.user
         if user.role == 'ORGANIZER':
@@ -158,36 +199,102 @@ class EventViewSet(viewsets.ModelViewSet):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Cannot edit events that are ongoing or completed.")
 
-        dates_changed = (
-            serializer.validated_data.get('start_date', event.start_date) != event.start_date
-            or serializer.validated_data.get('start_time', event.start_time) != event.start_time
-            or serializer.validated_data.get('end_date', event.end_date) != event.end_date
-            or serializer.validated_data.get('end_time', event.end_time) != event.end_time
+        if user.role == 'ORGANIZER':
+            self._queue_organizer_edit(serializer, event)
+        else:
+            attendee_fields = sorted(
+                set(serializer.validated_data) & ATTENDEE_RELEVANT_FIELDS
+            )
+            serializer.save()
+            if attendee_fields:
+                readable = ', '.join(
+                    FIELD_LABELS.get(field, field.replace('_', ' ').title())
+                    for field in attendee_fields
+                )
+                self._notify_booked_users(
+                    event,
+                    'EVENT_UPDATE',
+                    'Event Details Updated',
+                    f'"{event.title}" has been updated. Changed: {readable}. '
+                    f'Please review the event page for the latest details.',
+                )
+
+    def _queue_organizer_edit(self, serializer, event):
+        """
+        Organizer edits are never applied straight to the live event. They are
+        parked on an EventChangeRequest so an admin can compare before/after and
+        approve or reject them.
+        """
+        user = self.request.user
+        validated = dict(serializer.validated_data)
+
+        # An organizer has no business flipping lifecycle state.
+        validated.pop('status', None)
+
+        banner = validated.pop('banner', None)
+        certificate_template = validated.pop('certificate_template', None)
+
+        previous_data, proposed_data, changes = build_diff(event, validated)
+
+        file_changes = []
+        if banner is not None:
+            old_name = file_name(getattr(event, 'banner', None))
+            if file_name(banner) != old_name:
+                file_changes.append(('banner', old_name, file_name(banner)))
+        if certificate_template is not None:
+            old_name = file_name(getattr(event, 'certificate_template', None))
+            if file_name(certificate_template) != old_name:
+                file_changes.append(
+                    ('certificate_template', old_name, file_name(certificate_template))
+                )
+
+        for field, old_name, new_name in file_changes:
+            previous_data[field] = old_name
+            proposed_data[field] = new_name
+            changes.append(
+                {
+                    'field': field,
+                    'label': FIELD_LABELS.get(field, field.replace('_', ' ').title()),
+                    'old': old_name or '',
+                    'new': new_name or '',
+                    'is_file': True,
+                }
+            )
+
+        if not changes:
+            raise ValidationError("No changes detected to submit for review.")
+
+        # Only one open request per event at a time.
+        EventChangeRequest.objects.filter(
+            event=event, status='PENDING'
+        ).update(status='SUPERSEDED')
+
+        change_request = EventChangeRequest.objects.create(
+            event=event,
+            organizer=user,
+            previous_data=previous_data,
+            proposed_data=proposed_data,
+            changes=changes,
+            previous_status=event.status,
+            new_banner=banner,
+            new_certificate_template=certificate_template,
         )
 
-        if user.role == 'ORGANIZER':
-            serializer.save(status='PENDING')
-            admin_users = User.objects.filter(role='ADMIN', is_active=True)
-            for admin in admin_users:
-                Notification.objects.create(
-                    user=admin,
-                    notification_type='EVENT_APPROVED',
-                    title='Event Updated - Re-approval Needed',
-                    message=f'{user.get_full_name() or user.username} updated event "{event.title}" and it requires re-approval.',
-                    related_event=event,
-                )
-        else:
-            serializer.save()
-
-        # Notify booked users if the schedule changed (e.g. postponed event)
-        if dates_changed:
-            self._notify_booked_users(
-                event,
-                'EVENT_POSTPONED',
-                'Event Rescheduled',
-                f'The schedule for "{event.title}" has been updated. '
-                f'Please check the event page for the new date and time.',
+        admin_users = User.objects.filter(role='ADMIN', is_active=True)
+        for admin in admin_users:
+            Notification.objects.create(
+                user=admin,
+                notification_type='EVENT_CHANGE_REQUESTED',
+                title='Event Update - Review Needed',
+                message=(
+                    f'{user.get_full_name() or user.username} requested changes to '
+                    f'"{event.title}" ({change_request.summary()}). '
+                    f'Review the comparison and approve or reject it.'
+                ),
+                related_event=event,
             )
+
+        self._change_request = change_request
 
     def perform_destroy(self, instance):
         user = self.request.user
@@ -592,18 +699,25 @@ class EventViewSet(viewsets.ModelViewSet):
     def _notify_booked_users(event, notification_type, title, message):
         """Send a notification to every user with an active booking for an event."""
         from bookings.models import Booking
-        user_ids = Booking.objects.filter(
-            event=event,
-            status__in=('PENDING', 'PENDING_APPROVAL', 'CONFIRMED'),
-        ).values_list('user_id', flat=True).distinct()
-        for user_id in user_ids:
-            Notification.objects.create(
-                user_id=user_id,
+        user_ids = list(
+            Booking.objects.filter(
+                event=event,
+                status__in=('PENDING', 'PENDING_APPROVAL', 'CONFIRMED'),
+            ).values_list('user_id', flat=True).distinct()
+        )
+        # Never notify the organizer about their own action.
+        user_ids = [uid for uid in user_ids if uid != event.organizer_id]
+        Notification.objects.bulk_create([
+            Notification(
+                user_id=uid,
                 notification_type=notification_type,
                 title=title,
                 message=message,
                 related_event=event,
             )
+            for uid in user_ids
+        ])
+        return len(user_ids)
 
     @action(detail=True, methods=['POST'])
     def start_event(self, request, pk=None):
@@ -676,7 +790,7 @@ class EventViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['POST'])
     def postpone_event(self, request, pk=None):
-        """Mark an upcoming event as postponed (organizer only)."""
+        """Postpone an upcoming event and notify attendees, organizer and admins."""
         event = self.get_object()
         if request.user.role != 'ORGANIZER' or event.organizer != request.user:
             return Response(
@@ -688,16 +802,62 @@ class EventViewSet(viewsets.ModelViewSet):
                 {"detail": "Only upcoming events can be postponed"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        reason = (request.data.get('reason') or '').strip()
+        new_date = request.data.get('new_start_date')
+
         event.status = 'POSTPONED'
         event.save()
-        self._notify_booked_users(
+
+        attendee_message = (
+            f'"{event.title}" has been postponed. A new date and time will be announced '
+            f'by the organizer. Your booking remains valid.'
+        )
+        if new_date:
+            attendee_message += f' The new date is expected to be {new_date}.'
+        if reason:
+            attendee_message += f' Reason: {reason}'
+
+        notified = self._notify_booked_users(
             event,
             'EVENT_POSTPONED',
             'Event Postponed',
-            f'"{event.title}" has been postponed. A new date and time will be announced '
-            f'by the organizer. Your booking remains valid.',
+            attendee_message,
         )
-        return Response({'status': 'Event postponed', 'event_status': event.status})
+
+        organizer_message = (
+            f'Your event "{event.title}" has been marked as postponed. '
+            f'{notified} booked user(s) were notified.'
+        )
+        if reason:
+            organizer_message += f' Reason given: {reason}'
+
+        Notification.objects.create(
+            user=event.organizer,
+            notification_type='EVENT_POSTPONED',
+            title='Event Postponed',
+            message=organizer_message,
+            related_event=event,
+        )
+
+        for admin in User.objects.filter(role='ADMIN', is_active=True):
+            Notification.objects.create(
+                user=admin,
+                notification_type='EVENT_POSTPONED',
+                title='Event Postponed by Organizer',
+                message=(
+                    f'{event.organizer.get_full_name() or event.organizer.username} '
+                    f'postponed "{event.title}". {notified} booked user(s) were notified.'
+                    + (f' Reason: {reason}' if reason else '')
+                ),
+                related_event=event,
+            )
+
+        return Response({
+            'status': 'Event postponed',
+            'event_status': event.status,
+            'notified_users': notified,
+        })
 
     @action(detail=True, methods=['GET'])
     def participants_pdf(self, request, pk=None):
@@ -775,6 +935,203 @@ class EventViewSet(viewsets.ModelViewSet):
             average_rating=Avg('experiences__rating')
         ).order_by('-favorited_by__created_at')
         serializer = EventSerializer(events, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['GET'])
+    def pending_changes(self, request, pk=None):
+        """The open change request for an event, if any (admin/organizer)."""
+        event = self.get_object()
+        change_request = EventChangeRequest.objects.filter(
+            event=event, status='PENDING'
+        ).first()
+        if change_request is None:
+            return Response({'detail': 'No pending change request for this event'},
+                            status=status.HTTP_404_NOT_FOUND)
+        serializer = EventChangeRequestSerializer(
+            change_request, context={'request': request}
+        )
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['GET'])
+    def change_history(self, request, pk=None):
+        """Full change history for an event (admin/organizer)."""
+        event = self.get_object()
+        if request.user.role == 'ORGANIZER' and event.organizer != request.user:
+            return Response(
+                {"detail": "You can only view the change history of your own events"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        change_requests = EventChangeRequest.objects.filter(event=event)
+        serializer = EventChangeRequestSerializer(
+            change_requests, many=True, context={'request': request}
+        )
+        return Response(serializer.data)
+
+
+class EventChangeRequestViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Organizer edit requests awaiting admin review.
+
+    Admins get the full queue with a before/after comparison and can approve or
+    reject. Organizers can only see their own requests to track progress.
+    """
+
+    serializer_class = EventChangeRequestSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ['status', 'event', 'organizer']
+    ordering_fields = ['created_at', 'reviewed_at', 'status']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        qs = EventChangeRequest.objects.select_related('event', 'organizer', 'reviewed_by')
+        user = self.request.user
+        if user.role == 'ADMIN':
+            return qs
+        if user.role == 'ORGANIZER':
+            return qs.filter(organizer=user)
+        return qs.none()
+
+    def get_permissions(self):
+        if self.action in ('approve', 'reject'):
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
+    def _get_pending(self, request, pk=None):
+        change_request = self.get_object()
+        if request.user.role != 'ADMIN':
+            raise ValidationError("Only admins can review event change requests.")
+        if change_request.status != 'PENDING':
+            raise ValidationError(
+                f"This request was already {change_request.status.lower()}."
+            )
+        return change_request
+
+    @action(detail=True, methods=['POST'])
+    def approve(self, request, pk=None):
+        """Apply an organizer's proposed changes to the live event."""
+        change_request = self._get_pending(request, pk)
+        event = change_request.event
+
+        applied_fields = []
+        for field, value in (change_request.proposed_data or {}).items():
+            if field in ('banner', 'certificate_template'):
+                continue
+            try:
+                setattr(event, field, coerce_proposed_value(field, value))
+            except Category.DoesNotExist:
+                raise ValidationError({field: f"Category '{value}' no longer exists."})
+
+        if change_request.new_banner:
+            event.banner = change_request.new_banner
+        if change_request.new_certificate_template:
+            event.certificate_template = change_request.new_certificate_template
+
+        if 'total_seats' in (change_request.proposed_data or {}):
+            event.available_seats = self._recompute_available_seats(event)
+
+        event.status = change_request.previous_status
+        event.save()
+
+        change_request.status = 'APPROVED'
+        change_request.admin_notes = request.data.get('admin_notes', '')
+        change_request.reviewed_by = request.user
+        change_request.reviewed_at = django_timezone.now()
+        change_request.save(
+            update_fields=[
+                'status', 'admin_notes', 'reviewed_by', 'reviewed_at', 'updated_at'
+            ]
+        )
+
+        changed = set(change_request.changed_field_names)
+        attendee_facing = sorted(changed & ATTENDEE_RELEVANT_FIELDS)
+
+        Notification.objects.create(
+            user=change_request.organizer,
+            notification_type='EVENT_CHANGE_APPROVED',
+            title='Event Update Approved',
+            message=(
+                f'Your changes to "{event.title}" were approved by admin '
+                f'({change_request.summary()}). The event now reflects the new details.'
+            ),
+            related_event=event,
+        )
+
+        if attendee_facing:
+            readable = ', '.join(
+                FIELD_LABELS.get(field, field.replace('_', ' ').title())
+                for field in attendee_facing
+            )
+            EventViewSet._notify_booked_users(
+                event,
+                'EVENT_UPDATE',
+                'Event Details Updated',
+                f'"{event.title}" has been updated. '
+                f'Changed: {readable}. '
+                f'Please review the event page for the latest details.',
+            )
+
+        return Response({
+            'status': 'Change request approved',
+            'applied_fields': sorted(changed),
+            'attendee_notified_fields': attendee_facing,
+            'event': EventSerializer(event, context={'request': request}).data,
+        })
+
+    @action(detail=True, methods=['POST'])
+    def reject(self, request, pk=None):
+        """Reject an organizer's proposed changes; the live event is untouched."""
+        change_request = self._get_pending(request, pk)
+        event = change_request.event
+
+        change_request.status = 'REJECTED'
+        change_request.admin_notes = request.data.get('admin_notes', '')
+        change_request.reviewed_by = request.user
+        change_request.reviewed_at = django_timezone.now()
+        change_request.save(
+            update_fields=[
+                'status', 'admin_notes', 'reviewed_by', 'reviewed_at', 'updated_at'
+            ]
+        )
+
+        message = (
+            f'Your changes to "{event.title}" were rejected by admin '
+            f'({change_request.summary()}). The event is unchanged.'
+        )
+        if change_request.admin_notes:
+            message += f' Reason: {change_request.admin_notes}'
+
+        Notification.objects.create(
+            user=change_request.organizer,
+            notification_type='EVENT_CHANGE_REJECTED',
+            title='Event Update Rejected',
+            message=message,
+            related_event=event,
+        )
+
+        return Response({
+            'status': 'Change request rejected',
+            'admin_notes': change_request.admin_notes,
+        })
+
+    @staticmethod
+    def _recompute_available_seats(event):
+        from django.db.models import Sum
+        from bookings.models import Booking
+        booked = Booking.objects.filter(
+            event=event, status__in=('CONFIRMED', 'PENDING', 'PENDING_APPROVAL')
+        ).aggregate(total=Sum('number_of_tickets'))['total'] or 0
+        return max(event.total_seats - booked, 0)
+
+    @action(detail=False, methods=['GET'])
+    def pending(self, request):
+        """Pending event change requests (admin queue)."""
+        if request.user.role != 'ADMIN':
+            return Response(
+                {"detail": "Only admins can access this"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        qs = self.get_queryset().filter(status='PENDING')
+        serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
 
 

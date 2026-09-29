@@ -8,7 +8,9 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 # Import ViewSets
 from accounts.views import UserViewSet, ProfileEditRequestViewSet
-from events.views import EventViewSet, CategoryViewSet, EventImageViewSet
+from events.views import (
+    EventViewSet, CategoryViewSet, EventImageViewSet, EventChangeRequestViewSet,
+)
 from bookings.views import BookingViewSet, WaitlistViewSet
 from chat.views import ChatRoomViewSet
 from community.views import EventExperienceViewSet
@@ -24,6 +26,7 @@ router.register(r'users', UserViewSet, basename='user')
 router.register(r'events', EventViewSet, basename='event')
 router.register(r'categories', CategoryViewSet, basename='category')
 router.register(r'event-images', EventImageViewSet, basename='event-image')
+router.register(r'event-change-requests', EventChangeRequestViewSet, basename='event-change-request')
 router.register(r'bookings', BookingViewSet, basename='booking')
 router.register(r'waitlist', WaitlistViewSet, basename='waitlist')
 router.register(r'chat-rooms', ChatRoomViewSet, basename='chat-room')

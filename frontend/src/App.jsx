@@ -55,6 +55,7 @@ import AdminRequests from './pages/admin/AdminRequests';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import ManageCategories from './pages/admin/ManageCategories';
 import ProfileEditRequests from './pages/admin/ProfileEditRequests';
+import EventChangeRequests from './pages/admin/EventChangeRequests';
 
 // Components
 import Navbar from './components/common/Navbar';
@@ -148,6 +149,7 @@ const AppContent = () => {
             <Route path="/admin/users/:id" element={<UserDetail />} />
             <Route path="/admin/requests" element={<AdminRequests />} />
             <Route path="/admin/profile-edit-requests" element={<ProfileEditRequests />} />
+            <Route path="/admin/event-change-requests" element={<EventChangeRequests />} />
             <Route path="/admin/analytics" element={<AdminAnalytics />} />
             <Route path="/admin/categories" element={<ManageCategories />} />
           </Route>

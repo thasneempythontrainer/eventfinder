@@ -98,6 +98,14 @@ const NotificationBell = () => {
   };
 
   const getNotificationLink = (n) => {
+    // Admin review queues take priority over the generic event link, otherwise
+    // a change-request alert would dump the admin on the event page instead.
+    if (n.notification_type === 'EVENT_CHANGE_REQUESTED' && user?.role === 'ADMIN') {
+      return '/admin/event-change-requests';
+    }
+    if (['EVENT_CHANGE_APPROVED', 'EVENT_CHANGE_REJECTED'].includes(n.notification_type)) {
+      return '/organizer/events';
+    }
     if (n.related_event) return `/events/${n.related_event}`;
     if (n.related_booking) return '/user/bookings';
     switch (n.notification_type) {
