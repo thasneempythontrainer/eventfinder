@@ -183,11 +183,12 @@ class EventViewSet(viewsets.ModelViewSet):
             for admin in admin_users:
                 Notification.objects.create(
                     user=admin,
-                    notification_type='EVENT_APPROVED',
-                    title='New Event Requires Approval',
-                    message=f'{user.get_full_name() or user.username} created event "{event.title}" and it requires approval.',
-                    related_event=event,
-                )
+notification_type='EVENT_APPROVED',
+                title='New Event Requires Approval',
+                message=f'{user.get_full_name() or user.username} created event "{event.title}" and it requires approval.',
+                related_event=event,
+                requires_action=True,
+            )
 
     def perform_update(self, serializer):
         event = serializer.instance
@@ -288,11 +289,12 @@ class EventViewSet(viewsets.ModelViewSet):
                 title='Event Update - Review Needed',
                 message=(
                     f'{user.get_full_name() or user.username} requested changes to '
-                    f'"{event.title}" ({change_request.summary()}). '
-                    f'Review the comparison and approve or reject it.'
-                ),
-                related_event=event,
-            )
+f'"{event.title}" ({change_request.summary()}). '
+                f'Review the comparison and approve or reject it.'
+            ),
+            related_event=event,
+            requires_action=True,
+        )
 
         self._change_request = change_request
 
@@ -707,16 +709,17 @@ class EventViewSet(viewsets.ModelViewSet):
         )
         # Never notify the organizer about their own action.
         user_ids = [uid for uid in user_ids if uid != event.organizer_id]
-        Notification.objects.bulk_create([
-            Notification(
+        # Individual creates, not bulk_create: bulk_create skips post_save, and
+        # that signal is what turns a Notification into an email. Using
+        # bulk_create here meant attendees saw the in-app alert but no mail.
+        for uid in user_ids:
+            Notification.objects.create(
                 user_id=uid,
                 notification_type=notification_type,
                 title=title,
                 message=message,
                 related_event=event,
             )
-            for uid in user_ids
-        ])
         return len(user_ids)
 
     @action(detail=True, methods=['POST'])
@@ -772,7 +775,7 @@ class EventViewSet(viewsets.ModelViewSet):
             )
         event.status = 'CANCELLED'
         event.save()
-        self._notify_booked_users(
+        notified = self._notify_booked_users(
             event,
             'EVENT_CANCELLED',
             'Event Cancelled',
@@ -783,10 +786,32 @@ class EventViewSet(viewsets.ModelViewSet):
             user=event.organizer,
             notification_type='EVENT_CANCELLED',
             title='Event Cancelled',
-            message=f'Your event "{event.title}" has been cancelled.',
+            message=(
+                f'Your event "{event.title}" has been cancelled. '
+                f'{notified} booked user(s) were notified.'
+            ),
             related_event=event,
         )
-        return Response({'status': 'Event cancelled'})
+        # Admins track cancellations for refund/compliance follow-up, same as
+        # they do for postponements.
+        for admin in User.objects.filter(role='ADMIN', is_active=True).exclude(
+            id=event.organizer_id
+        ):
+            Notification.objects.create(
+                user=admin,
+                notification_type='EVENT_CANCELLED',
+                title='Event Cancelled by Organizer',
+                message=(
+                    f'{event.organizer.get_full_name() or event.organizer.username} '
+                    f'cancelled "{event.title}". {notified} booked user(s) were notified.'
+                ),
+                related_event=event,
+                requires_action=True,
+            )
+        return Response({
+            'status': 'Event cancelled',
+            'notified_users': notified,
+        })
 
     @action(detail=True, methods=['POST'])
     def postpone_event(self, request, pk=None):
@@ -840,7 +865,9 @@ class EventViewSet(viewsets.ModelViewSet):
             related_event=event,
         )
 
-        for admin in User.objects.filter(role='ADMIN', is_active=True):
+        for admin in User.objects.filter(role='ADMIN', is_active=True).exclude(
+            id=event.organizer_id
+        ):
             Notification.objects.create(
                 user=admin,
                 notification_type='EVENT_POSTPONED',
@@ -851,6 +878,7 @@ class EventViewSet(viewsets.ModelViewSet):
                     + (f' Reason: {reason}' if reason else '')
                 ),
                 related_event=event,
+                requires_action=True,
             )
 
         return Response({

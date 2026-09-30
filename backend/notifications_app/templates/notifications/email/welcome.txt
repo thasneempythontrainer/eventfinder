@@ -1,0 +1,16 @@
+Hello {{ first_name }},
+
+Your EventFinder account is ready. You can start finding events and booking
+tickets straight away.
+
+A few things worth knowing:
+  * Browse events and book tickets from the Events page.
+  * Your email address is your login: {{ user.email }}
+  * Manage what emails you receive from your profile settings.
+
+Open EventFinder: {{ frontend_url }}
+
+{{ unsubscribe_hint }}
+
+Event Finder Team
+EventFinder

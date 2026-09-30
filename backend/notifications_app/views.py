@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.db.models import Q
 
 from .models import Notification, EmailNotification, SMSNotification
+from .pagination import NotificationPagination
 from .serializers import NotificationSerializer, NotificationUpdateSerializer
 
 
@@ -15,9 +16,24 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     """
     permission_classes = [IsAuthenticated]
     serializer_class = NotificationSerializer
+    pagination_class = NotificationPagination
 
     def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
+        queryset = Notification.objects.filter(
+            user=self.request.user
+        ).order_by('-created_at')
+
+        # Lets the notifications page filter server-side so counts and
+        # pagination stay correct instead of filtering one page in the client.
+        notification_type = self.request.query_params.get('type')
+        if notification_type:
+            queryset = queryset.filter(notification_type=notification_type)
+
+        unread = self.request.query_params.get('unread')
+        if unread and unread.lower() in ('1', 'true', 'yes'):
+            queryset = queryset.filter(is_read=False)
+
+        return queryset
 
     @action(detail=True, methods=['POST'])
     def mark_as_read(self, request, pk=None):

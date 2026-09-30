@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-  LayoutDashboard, Ticket, Star, ListPlus, PlusCircle, CheckCircle,
-  CalendarDays, LogOut, Home, Search, ClipboardList, KeyRound, PenLine, Menu,
-  User, Users, Handshake, BarChart3, Tag, Heart, GitCompare
+  LayoutDashboard, Ticket, Star, PlusCircle, CheckCircle,
+  CalendarDays, LogOut, Home, ClipboardList, KeyRound, PenLine, Menu,
+  User, Users, Handshake, BarChart3, Tag, Heart, GitCompare, Bell
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import './Navbar.css';
@@ -287,6 +287,13 @@ const Navbar = () => {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <LayoutDashboard size={16} /> Dashboard
+                </Link>
+                <Link 
+                  to="/notifications"
+                  className="mobile-nav-link"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Bell size={16} /> Notifications
                 </Link>
                 <Link 
                   to="/profile"

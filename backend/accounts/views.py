@@ -7,12 +7,14 @@ from rest_framework.decorators import action
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 
 from .models import User, OrganizerProfile, ProfileEditRequest
+
+from notifications_app.email import send_adhoc_email
+from notifications_app.models import Notification
 
 from .serializers import (
     UserRegistrationSerializer,
@@ -41,7 +43,17 @@ class RegisterUserView(APIView):
 
         if serializer.is_valid():
 
-            serializer.save()
+            user = serializer.save()
+
+            Notification.objects.create(
+                user=user,
+                notification_type='WELCOME',
+                title='Welcome to EventFinder',
+                message=(
+                    'Your EventFinder account has been created. '
+                    'You can now browse events and book tickets.'
+                ),
+            )
 
             return Response(
                 {
@@ -71,15 +83,26 @@ class RegisterOrganizerView(APIView):
             new_user = serializer.save()
 
             from accounts.models import User
-            from notifications_app.models import Notification
             admin_users = User.objects.filter(role='ADMIN', is_active=True)
             for admin in admin_users:
                 Notification.objects.create(
                     user=admin,
-                    notification_type='ORGANIZER_APPROVAL',
-                    title='New Organizer Registration',
-                    message=f'{new_user.first_name or new_user.username} ({new_user.email}) registered as an organizer and is waiting for approval.',
-                )
+notification_type='ORGANIZER_APPROVAL',
+                title='New Organizer Registration',
+                message=f'{new_user.first_name or new_user.username} ({new_user.email}) registered as an organizer and is waiting for approval.',
+                requires_action=True,
+            )
+
+            Notification.objects.create(
+                user=new_user,
+                notification_type='ORGANIZER_APPLICATION_RECEIVED',
+                title='Organizer application received',
+                message=(
+                    'Thanks for applying to organise events on EventFinder. '
+                    'An administrator is reviewing your application and you '
+                    'will hear from us shortly.'
+                ),
+            )
 
             return Response(
                 {
@@ -112,6 +135,18 @@ class LoginView(APIView):
         user = serializer.validated_data["user"]
 
         refresh = RefreshToken.for_user(user)
+
+        agent = request.META.get('HTTP_USER_AGENT', 'Unknown device')
+        ip = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip = ip.split(',')[0].strip() if ip else request.META.get('REMOTE_ADDR', 'Unknown')
+        Notification.objects.create(
+            user=user,
+            notification_type='ACCOUNT_LOGIN',
+            title='New login to your account',
+            message=(
+                f'Your account was signed in from {ip} using {agent}.'
+            ),
+        )
 
         return Response(
             {
@@ -148,20 +183,24 @@ class PasswordResetRequestView(APIView):
                 f"Hello {user.first_name or user.username},\n\n"
                 "You requested a password reset for your EventFinder account.\n\n"
                 f"Click the link below to choose a new password:\n{reset_url}\n\n"
-                "If you did not request this, you can safely ignore this email.\n\n"
-                "Best regards,\nEvent Finder Team"
+                "This link expires in "
+                f"{int(settings.PASSWORD_RESET_TIMEOUT.total_seconds() // 3600)} hours and "
+                "can only be used once.\n\n"
+                "If you did not request this, you can safely ignore this email. "
+                "Your password has not changed.\n\n"
+                "Best regards,\nEvent Finder Team\nEventFinder"
             )
 
-            try:
-                send_mail(
-                    subject,
-                    message,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [user.email],
-                    fail_silently=False,
-                )
-            except Exception:
-                pass
+            # Recorded so a failed send is visible instead of silently lost.
+            notification = Notification.objects.create(
+                user=user,
+                notification_type='PASSWORD_RESET_REQUESTED',
+                title='Password reset requested',
+                message='A password reset link was sent to your email address.',
+            )
+            send_adhoc_email(
+                user.email, subject, message, notification=notification
+            )
 
         return Response(
             {
@@ -200,6 +239,16 @@ class PasswordResetConfirmView(APIView):
 
         user.set_password(serializer.validated_data["new_password"])
         user.save()
+
+        Notification.objects.create(
+            user=user,
+            notification_type='PASSWORD_CHANGED',
+            title='Your password has been changed',
+            message=(
+                'The password for your EventFinder account was reset. '
+                'If this was not you, reset it again and contact support.'
+            ),
+        )
 
         return Response(
             {"message": "Your password has been reset successfully. You can now sign in."},
@@ -344,6 +393,22 @@ class UserViewSet(viewsets.ModelViewSet):
 
         user.is_active = not user.is_active
         user.save()
+
+        if user.is_active:
+            Notification.objects.create(
+                user=user,
+                notification_type='ACCOUNT_ACTIVATED',
+                title='Your account has been activated',
+                message='An administrator has reactivated your EventFinder account. You can sign in again.',
+            )
+        else:
+            Notification.objects.create(
+                user=user,
+                notification_type='ACCOUNT_DEACTIVATED',
+                title='Your account has been deactivated',
+                message='An administrator has deactivated your EventFinder account. You can no longer sign in or book tickets.',
+            )
+
         return Response({
             'is_active': user.is_active,
             'message': f'User {"activated" if user.is_active else "deactivated"} successfully'
@@ -478,7 +543,6 @@ class ProfileEditRequestViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         edit_request = serializer.save(user=self.request.user)
 
-        from notifications_app.models import Notification
         admin_users = User.objects.filter(role='ADMIN', is_active=True)
         fields = ', '.join(edit_request.proposed_data.keys())
         for admin in admin_users:
@@ -490,7 +554,18 @@ class ProfileEditRequestViewSet(viewsets.ModelViewSet):
                     f'{self.request.user.first_name or self.request.user.username} '
                     f'({self.request.user.role}) requested changes to: {fields}'
                 ),
+                requires_action=True,
             )
+
+        Notification.objects.create(
+            user=self.request.user,
+            notification_type='PROFILE_EDIT_REQUEST',
+            title='Profile change request received',
+            message=(
+                f'We received your request to update: {fields}. '
+                'An administrator will review it shortly.'
+            ),
+        )
 
     @action(detail=True, methods=['POST'], permission_classes=[IsAuthenticated])
     def approve(self, request, pk=None):

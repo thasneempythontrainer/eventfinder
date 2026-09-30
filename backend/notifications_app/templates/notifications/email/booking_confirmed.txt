@@ -1,0 +1,18 @@
+Hello {{ first_name }},
+
+{{ notification.message }}
+
+{% if notification.related_event %}Event: {{ notification.related_event.title }}
+{% if notification.related_event.start_date %}Starts: {{ notification.related_event.start_date }}
+{% endif %}{% if notification.related_event.venue %}Venue: {{ notification.related_event.venue }}
+{% endif %}{% endif %}{% if notification.related_booking %}
+{% if notification.related_booking.booking_reference %}Booking reference: {{ notification.related_booking.booking_reference }}
+{% endif %}{% if notification.related_booking.number_of_tickets %}Tickets: {{ notification.related_booking.number_of_tickets }}
+{% endif %}{% if notification.related_booking.total_price %}Amount paid: {{ notification.related_booking.total_price }}
+{% endif %}{% endif %}
+View your booking: {{ frontend_url }}/my-bookings
+
+{{ unsubscribe_hint }}
+
+Event Finder Team
+EventFinder

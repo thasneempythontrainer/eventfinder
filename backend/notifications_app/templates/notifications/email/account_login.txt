@@ -1,0 +1,15 @@
+Hello {{ first_name }},
+
+A new sign-in to your EventFinder account was recorded on {{ notification.created_at }}.
+
+Account: {{ user.email }}
+
+If this was you, you can ignore this email.
+
+If you do not recognise this sign-in, change your password now and contact us:
+
+  {{ frontend_url }}/forgot-password
+
+Best regards,
+Event Finder Team
+EventFinder

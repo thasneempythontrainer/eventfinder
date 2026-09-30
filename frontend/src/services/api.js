@@ -195,7 +195,7 @@ export const experienceAPI = {
 
 // Notification APIs
 export const notificationAPI = {
-  list: () => api.get('/notifications/'),
+  list: (params) => api.get('/notifications/', { params }),
   getUnread: () => api.get('/notifications/unread/'),
   getUnreadCount: () => api.get('/notifications/unread_count/'),
   markAsRead: (id) =>

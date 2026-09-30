@@ -38,6 +38,14 @@ class Notification(models.Model):
         ("BOOKING_REJECTED", "Booking Rejected"),
         ("WAITLIST_JOINED", "Joined Waitlist"),
         ("WAITLIST_ASSIGNED", "Waitlist Assigned"),
+        ("WELCOME", "Welcome"),
+        ("ORGANIZER_APPLICATION_RECEIVED", "Organizer Application Received"),
+        ("ACCOUNT_LOGIN", "Account Login"),
+        ("PASSWORD_RESET_REQUESTED", "Password Reset Requested"),
+        ("PASSWORD_CHANGED", "Password Changed"),
+        ("ACCOUNT_ACTIVATED", "Account Activated"),
+        ("ACCOUNT_DEACTIVATED", "Account Deactivated"),
+        ("BOOKING_CANCELLED", "Booking Cancelled"),
     )
     
     user = models.ForeignKey(
@@ -74,6 +82,13 @@ class Notification(models.Model):
     is_read = models.BooleanField(default=False)
     
     read_at = models.DateTimeField(blank=True, null=True)
+
+    # Set on notifications that exist because a human has to act on them, such
+    # as admin alerts about cancellations and change requests. These bypass the
+    # recipient's email preferences: an admin who switches off "Event updates"
+    # to reduce noise must not silently stop learning about events that need
+    # refund or compliance follow-up.
+    requires_action = models.BooleanField(default=False)
     
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -92,13 +107,14 @@ class EmailNotification(models.Model):
     """
     Model to track email notifications
     """
-    
-    STATUS_CHOICES = (
-        ("PENDING", "Pending"),
-        ("SENT", "Sent"),
-        ("FAILED", "Failed"),
-    )
-    
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        SENT = "SENT", "Sent"
+        FAILED = "FAILED", "Failed"
+
+    STATUS_CHOICES = Status.choices
+
     notification = models.OneToOneField(
         Notification,
         on_delete=models.CASCADE,
@@ -184,3 +200,49 @@ class SMSNotification(models.Model):
     
     def __str__(self):
         return f"SMS to {self.phone_number} - {self.status}"
+
+
+class EmailPreference(models.Model):
+    """
+    Per-category opt-out for outbound email.
+
+    A missing row means every category is enabled, so preferences work for
+    existing users without a data migration. Transactional categories
+    (welcome, password reset) are deliberately not listed here and are always
+    delivered.
+    """
+
+    CATEGORIES = (
+        ("ACCOUNT", "Account activity"),
+        ("BOOKINGS", "Bookings and tickets"),
+        ("EVENTS", "Event updates"),
+        ("ORGANIZER", "Organizer application updates"),
+        ("MARKETING", "Promotions and announcements"),
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="email_preferences",
+    )
+
+    category = models.CharField(max_length=20, choices=CATEGORIES)
+
+    enabled = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ("user", "category")
+
+    def __str__(self):
+        state = "on" if self.enabled else "off"
+        return f"{self.user.username} - {self.category} email {state}"
+
+
+def user_wants_email(user, category):
+    """True unless the user has explicitly switched this category off."""
+    if not user or not getattr(user, "email", None):
+        return False
+    preference = EmailPreference.objects.filter(
+        user=user, category=category
+    ).first()
+    return True if preference is None else preference.enabled

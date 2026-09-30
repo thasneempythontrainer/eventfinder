@@ -18,6 +18,7 @@ import EventDetail from './pages/events/EventDetail';
 import Profile from './pages/common/Profile';
 import PaymentReceipt from './pages/common/PaymentReceipt';
 import PaymentFailed from './pages/common/PaymentFailed';
+import Notifications from './pages/common/Notifications';
 
 // Participant Request Pages
 import ParticipantRequestList from './pages/participants/ParticipantRequestList';
@@ -157,6 +158,7 @@ const AppContent = () => {
           {/* Profile & Payment - accessible by all authenticated roles */}
           <Route element={<ProtectedRoute allowedRoles={['USER', 'ORGANIZER', 'ADMIN']} />}>
             <Route path="/profile" element={<Profile />} />
+            <Route path="/notifications" element={<Notifications />} />
             <Route path="/payment/success" element={<PaymentReceipt />} />
             <Route path="/payment/failed" element={<PaymentFailed />} />
           </Route>

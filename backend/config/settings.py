@@ -4,6 +4,14 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load .env if python-dotenv is available; harmless when it is not.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(BASE_DIR / ".env")
+except ImportError:
+    pass
+
 # ------------------------------------------------------------------
 # SECURITY
 # ------------------------------------------------------------------
@@ -285,20 +293,38 @@ TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "your_phone_number")
 # ------------------------------------------------------------------
 # EMAIL
 # ------------------------------------------------------------------
+# Credentials come from the environment. They must never be committed:
+# an app password that leaks here can be used to send mail as this account.
+# Copy .env.example to .env and fill in the blanks.
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.smtp.EmailBackend",
+)
 
-EMAIL_HOST = "smtp.gmail.com"
+EMAIL_HOST = os.getenv("EMAIL_HOST") or "smtp.gmail.com"
 
-EMAIL_PORT = 587
+EMAIL_PORT = int(os.getenv("EMAIL_PORT") or 587)
 
-EMAIL_USE_TLS = True
+EMAIL_USE_TLS = (os.getenv("EMAIL_USE_TLS") or "True").lower() in ("1", "true", "yes")
 
-EMAIL_HOST_USER = "thasneempythontrainer@gmail.com"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER") or ""
 
-EMAIL_HOST_PASSWORD = "smeuzxuqqodchuau"
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD") or ""
 
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+# An empty value in .env must fall back to the authenticated account rather
+# than staying "", which Gmail rejects as an invalid From address.
+DEFAULT_FROM_EMAIL = (
+    os.getenv("DEFAULT_FROM_EMAIL") or EMAIL_HOST_USER or "noreply@eventfinder.com"
+)
+
+# Without a timeout a stalled SMTP socket blocks the request thread forever.
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT") or 10)
+
+# When SMTP is not configured, fall back to printing emails to the console
+# instead of failing every send. Set EMAIL_BACKEND explicitly to override.
+if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # ------------------------------------------------------------------
 # SWAGGER

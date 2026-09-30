@@ -1,0 +1,10 @@
+Hello {{ first_name }},
+
+Your EventFinder account has been deactivated by an administrator.
+
+You will no longer be able to sign in or book tickets. Your booking history is
+retained. If you think this is a mistake, contact support.
+
+Best regards,
+Event Finder Team
+EventFinder

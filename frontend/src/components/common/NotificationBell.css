@@ -156,6 +156,23 @@
   font-size: 14px;
 }
 
+.notif-view-all {
+  width: 100%;
+  padding: 11px 16px;
+  border: none;
+  border-top: 1px solid #eee;
+  background: #fff;
+  color: #e8622c;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.notif-view-all:hover {
+  background: #fff8f0;
+}
+
 @media (max-width: 480px) {
   .notification-dropdown {
     width: calc(100vw - 32px);
