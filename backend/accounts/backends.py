@@ -13,10 +13,9 @@ class EmailBackend(ModelBackend):
         if email is None or password is None:
             return None
 
-        try:
-            user = User.objects.get(email=email)
+        user = User.objects.filter(email__iexact=email).order_by("pk").first()
 
-        except User.DoesNotExist:
+        if user is None:
             return None
 
         if user.check_password(password) and self.user_can_authenticate(user):

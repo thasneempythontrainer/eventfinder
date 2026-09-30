@@ -132,10 +132,9 @@ class PasswordResetRequestView(APIView):
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
 
-        try:
-            user = User.objects.get(email__iexact=email, is_active=True)
-        except User.DoesNotExist:
-            user = None
+        user = User.objects.filter(
+            email__iexact=email, is_active=True
+        ).order_by("pk").first()
 
         if user is not None:
             uid = urlsafe_base64_encode(force_bytes(user.pk))
@@ -515,6 +514,25 @@ class ProfileEditRequestViewSet(viewsets.ModelViewSet):
 
         profile_fields = {'organization_name', 'address', 'description'}
         user_fields = proposed.keys() - profile_fields
+
+        if 'email' in user_fields:
+            new_email = (proposed['email'] or '').strip()
+            if not new_email:
+                return Response(
+                    {"detail": "Failed to update user: email is required."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            clash = User.objects.filter(email__iexact=new_email).exclude(pk=user.pk)
+            if clash.exists():
+                return Response(
+                    {
+                        "detail": (
+                            "Failed to update user: an account with this email "
+                            "already exists. Please use another email."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         for field in user_fields:
             value = proposed[field]

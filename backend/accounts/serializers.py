@@ -5,6 +5,30 @@ from rest_framework import serializers
 from .models import User, OrganizerProfile, ProfileEditRequest
 
 
+EMAIL_TAKEN_ERROR = (
+    "An account with this email already exists. Please use another email."
+)
+
+
+def validate_email_is_available(email):
+    """Reject an email already used by another account, ignoring case.
+
+    Declared explicitly on the registration serializers so this wording is used
+    instead of DRF's generic "user with this email already exists." Unique
+    message, which the model-level unique=True would otherwise produce.
+    """
+    if User.objects.filter(email__iexact=(email or "").strip()).exists():
+        raise serializers.ValidationError(EMAIL_TAKEN_ERROR)
+
+
+def unique_email_field():
+    return serializers.EmailField(
+        required=True,
+        allow_blank=False,
+        validators=[validate_email_is_available],
+    )
+
+
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
@@ -21,6 +45,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
+    email = unique_email_field()
 
     class Meta:
         model = User
@@ -37,6 +62,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             "username": {"required": False},
             "phone_number": {"required": False},
         }
+
+    def validate_email(self, value):
+        return value.strip()
 
     def create(self, validated_data):
         if not validated_data.get("phone_number"):
@@ -71,6 +99,7 @@ class OrganizerProfileSerializer(serializers.ModelSerializer):
 
 class OrganizerRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
+    email = unique_email_field()
     organization_name = serializers.CharField(write_only=True)
     government_id = serializers.FileField(write_only=True)
     address = serializers.CharField(write_only=True, required=False, default="")
@@ -96,6 +125,9 @@ class OrganizerRegistrationSerializer(serializers.ModelSerializer):
             "username": {"required": False},
             "phone_number": {"required": False},
         }
+
+    def validate_email(self, value):
+        return value.strip()
 
     def create(self, validated_data):
         organization_name = validated_data.pop("organization_name")
@@ -143,10 +175,9 @@ class LoginSerializer(serializers.Serializer):
         email = attrs.get("email")
         password = attrs.get("password")
 
-        try:
-            user = User.objects.get(email=email)
+        user = User.objects.filter(email__iexact=email).order_by("pk").first()
 
-        except User.DoesNotExist:
+        if user is None:
             raise serializers.ValidationError(
                 "Invalid email or password."
             )

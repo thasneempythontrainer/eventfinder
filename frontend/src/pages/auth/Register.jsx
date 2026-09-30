@@ -20,6 +20,7 @@ const Register = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { registerUser } = useAuth();
@@ -30,12 +31,16 @@ const Register = () => {
       ...prev,
       [name]: value
     }));
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({ ...prev, [name]: undefined }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setFieldErrors({});
     setLoading(true);
 
     if (!formData.first_name || !formData.last_name || !formData.email || !formData.password) {
@@ -79,7 +84,15 @@ const Register = () => {
         navigate('/login');
       }, 2000);
     } catch (err) {
-      setError(err.response?.data?.detail || err.response?.data?.email?.[0] || 'Registration failed. Please try again.');
+      const data = err.response?.data || {};
+      const fieldMessages = {};
+      Object.entries(data).forEach(([field, messages]) => {
+        if (field !== 'detail' && Array.isArray(messages)) {
+          fieldMessages[field] = messages[0];
+        }
+      });
+      setFieldErrors(fieldMessages);
+      setError(data.detail || data.email?.[0] || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -138,7 +151,7 @@ const Register = () => {
           </div>
         </div>
 
-        <div className="input-group">
+        <div className={`input-group${fieldErrors.email ? ' has-error' : ''}`}>
           <label htmlFor="email">Email Address *</label>
           <div className="input-wrap">
             <Mail size={18} className="input-icon" />
@@ -152,6 +165,11 @@ const Register = () => {
               required
             />
           </div>
+          {fieldErrors.email && (
+            <div className="field-error">
+              <AlertCircle size={14} /> {fieldErrors.email}
+            </div>
+          )}
         </div>
 
         <div className="input-group">
